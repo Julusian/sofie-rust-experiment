@@ -1,28 +1,31 @@
+use super::doc::DocWithId;
+
 #[derive(Debug, Clone)]
 pub enum CacheObjectError {
-    Unknown(String),
+    // Unknown(String),
     NotImplemented,
     IsToBeRemoved(&'static str),
 }
 
 type Result<T> = std::result::Result<T, CacheObjectError>;
 
-pub trait DbCacheReadObject<T> {
+pub trait DbCacheReadObject<T: for<'a> DocWithId<'a>> {
     fn name(&self) -> &str;
 
     fn doc(&self) -> &T;
 }
 
-pub trait DbCacheWriteObject<T>: DbCacheReadObject<T> {
+pub trait DbCacheWriteObject<T: for<'a> DocWithId<'a>>: DbCacheReadObject<T> {
     fn is_modified(&self) -> bool;
+    fn mark_for_removal(&mut self);
 
     fn discard_changes(&mut self);
     fn update_database_with_data(&mut self) -> Result<()>; // TODO
 
-    fn update(&mut self, cb: fn(T) -> Option<T>) -> Result<bool>;
+    fn update(&mut self, cb: fn(doc: &T) -> Option<T>) -> Result<bool>;
 }
 
-pub struct DbCacheWriteObjectImpl<T> {
+pub struct DbCacheWriteObjectImpl<T: for<'a> DocWithId<'a>> {
     document: T,
     document_raw: T,
 
@@ -31,7 +34,7 @@ pub struct DbCacheWriteObjectImpl<T> {
 
     name: String,
 }
-impl<T> DbCacheWriteObjectImpl<T> {
+impl<T: for<'a> DocWithId<'a>> DbCacheWriteObjectImpl<T> {
     fn assert_not_to_be_removed(&self, method: &'static str) -> Result<()> {
         if self.is_to_be_removed {
             Err(CacheObjectError::IsToBeRemoved(method))
@@ -40,7 +43,7 @@ impl<T> DbCacheWriteObjectImpl<T> {
         }
     }
 }
-impl<T> DbCacheReadObject<T> for DbCacheWriteObjectImpl<T> {
+impl<T: for<'a> DocWithId<'a>> DbCacheReadObject<T> for DbCacheWriteObjectImpl<T> {
     fn name(&self) -> &str {
         &self.name
     }
@@ -49,9 +52,13 @@ impl<T> DbCacheReadObject<T> for DbCacheWriteObjectImpl<T> {
         &self.document
     }
 }
-impl<T: Clone> DbCacheWriteObject<T> for DbCacheWriteObjectImpl<T> {
+impl<T: for<'a> DocWithId<'a>> DbCacheWriteObject<T> for DbCacheWriteObjectImpl<T> {
     fn is_modified(&self) -> bool {
         self.updated
+    }
+
+    fn mark_for_removal(&mut self) {
+        self.is_to_be_removed = true;
     }
 
     fn discard_changes(&mut self) {
@@ -64,11 +71,10 @@ impl<T: Clone> DbCacheWriteObject<T> for DbCacheWriteObjectImpl<T> {
         Err(CacheObjectError::NotImplemented)
     }
 
-    fn update(&mut self, cb: fn(T) -> Option<T>) -> Result<bool> {
+    fn update(&mut self, cb: fn(doc: &T) -> Option<T>) -> Result<bool> {
         self.assert_not_to_be_removed("update")?;
 
-        // TODO - can we avoid this clone?
-        let new_doc = cb(self.document.clone());
+        let new_doc = cb(&self.document);
         if let Some(new_doc) = new_doc {
             // TODO - some equality check?
 
