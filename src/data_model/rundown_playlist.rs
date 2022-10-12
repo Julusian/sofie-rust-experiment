@@ -32,6 +32,9 @@ pub struct RundownPlaylist {
     pub next_time_offset: Option<Duration>,
 
     pub started_playback: Option<DateTime<Utc>>,
+
+    pub rundown_ids_in_order: Vec<String>,
+    pub loop_: bool,
 }
 impl<'a> DocWithId<'a> for RundownPlaylist {
     fn doc_id(&'a self) -> &'a str {

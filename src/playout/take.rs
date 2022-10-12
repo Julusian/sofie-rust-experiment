@@ -2,7 +2,9 @@ use std::ops::Add;
 
 use chrono::{DateTime, Duration, Utc};
 
-use super::{cache::PlayoutCache, lib::is_too_close_to_autonext};
+use super::{
+    cache::PlayoutCache, lib::is_too_close_to_autonext, select_next_part::select_next_part,
+};
 use crate::{
     cache::{
         collection::{DbCacheReadCollection, DbCacheWriteCollection},
@@ -131,14 +133,13 @@ pub fn take_next_part_inner(mut cache: PlayoutCache, now: DateTime<Utc>) -> Resu
 
     clear_next_segment_id(&mut cache, &take_part_instance)?;
 
-    // TODO
-    // 	const nextPart = selectNextPart(
-    // 		context,
-    // 		cache.Playlist.doc,
-    // 		takePartInstance,
-    // 		null,
-    // 		getOrderedSegmentsAndPartsFromPlayoutCache(cache)
-    // 	)
+    let next_part = select_next_part(
+        cache.playlist.doc(),
+        Some(&take_part_instance),
+        None,
+        cache.get_ordered_segments_and_parts(),
+        true,
+    );
 
     // TODO
     // 	const showStyle = await pShowStyle

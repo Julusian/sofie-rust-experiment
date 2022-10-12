@@ -15,6 +15,9 @@ pub struct PartInTransition {
 #[derive(Clone)]
 pub struct Part {
     pub id: String,
+    pub rank: usize,
+
+    pub segment_id: String,
 
     pub autonext: bool,
     pub disable_next_in_transition: bool,
@@ -22,9 +25,17 @@ pub struct Part {
     pub untimed: bool,
 
     pub expected_duration: Option<Duration>,
+
+    pub invalid: bool,
+    pub floated: bool,
 }
 impl<'a> DocWithId<'a> for Part {
     fn doc_id(&'a self) -> &'a str {
         &self.id
+    }
+}
+impl Part {
+    pub fn is_playable(&self) -> bool {
+        !self.invalid && !self.floated
     }
 }

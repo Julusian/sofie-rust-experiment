@@ -4,7 +4,10 @@ use crate::{
         doc::DocWithId,
         object::{DbCacheReadObject, DbCacheWriteObjectImpl},
     },
-    data_model::{part_instance::PartInstance, rundown_playlist::RundownPlaylist},
+    data_model::{
+        part::Part, part_instance::PartInstance, rundown_playlist::RundownPlaylist,
+        segment::Segment,
+    },
 };
 
 #[derive(Clone)]
@@ -23,8 +26,8 @@ pub struct PlayoutCache {
 
     // pub playlist_lock: Rc<>
     pub rundowns: DbCacheWriteCollectionImpl<FakeDoc>,
-    pub segments: DbCacheWriteCollectionImpl<FakeDoc>,
-    pub parts: DbCacheWriteCollectionImpl<FakeDoc>,
+    pub segments: DbCacheWriteCollectionImpl<Segment>,
+    pub parts: DbCacheWriteCollectionImpl<Part>,
     pub part_instances: DbCacheWriteCollectionImpl<PartInstance>,
     pub piece_instances: DbCacheWriteCollectionImpl<FakeDoc>,
 
@@ -53,6 +56,7 @@ impl PlayoutCache {
             None
         }
     }
+
     pub fn get_previous_part_instance(&self) -> Option<PartInstance> {
         let playlist = self.playlist.doc();
 
@@ -62,4 +66,49 @@ impl PlayoutCache {
             None
         }
     }
+
+    pub fn get_ordered_segments_and_parts(&self) -> SegmentsAndParts {
+        get_rundowns_segments_and_parts_from_caches(
+            &self.parts,
+            &self.segments,
+            &self.playlist.doc().rundown_ids_in_order,
+        )
+    }
+}
+
+pub struct SegmentsAndParts {
+    pub segments: Vec<Segment>,
+    pub parts: Vec<Part>,
+}
+
+fn get_rundowns_segments_and_parts_from_caches(
+    parts_cache: &DbCacheWriteCollectionImpl<Part>,
+    segments_cache: &DbCacheWriteCollectionImpl<Segment>,
+    rundown_ids_in_order: &Vec<String>,
+) -> SegmentsAndParts {
+    todo!()
+    // const segments = sortSegmentsInRundowns(
+    // 	segmentsCache.findAll(null, {
+    // 		sort: {
+    // 			rundownId: 1,
+    // 			_rank: 1,
+    // 		},
+    // 	}),
+    // 	playlist
+    // )
+
+    // const parts = sortPartsInSortedSegments(
+    // 	partsCache.findAll(null, {
+    // 		sort: {
+    // 			rundownId: 1,
+    // 			_rank: 1,
+    // 		},
+    // 	}),
+    // 	segments
+    // )
+
+    // return {
+    // 	segments: segments,
+    // 	parts: parts,
+    // }
 }
