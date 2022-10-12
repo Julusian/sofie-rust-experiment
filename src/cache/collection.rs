@@ -40,8 +40,8 @@ pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a>>: DbCacheReadCollectio
     fn discard_changes(&mut self);
     fn update_database_with_data(&mut self) -> Result<()>; // TODO
 
-    fn update_one(&mut self, id: &str, cb: fn(doc: &T) -> Option<T>) -> Result<bool>;
-    fn update_all(&mut self, cb: fn(doc: &T) -> Option<T>) -> Result<Vec<String>>;
+    fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &str, cb: F) -> Result<bool>;
+    fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<String>>;
 
     fn replace_one(&mut self, doc: T) -> Result<bool>;
 }
@@ -213,7 +213,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         Err(CacheCollectionError::NotImplemented)
     }
 
-    fn update_one(&mut self, id: &str, cb: fn(doc: &T) -> Option<T>) -> Result<bool> {
+    fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &str, cb: F) -> Result<bool> {
         self.assert_not_to_be_removed("update_one")?;
 
         let doc = self.documents.get_mut(id);
@@ -240,7 +240,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         }
     }
 
-    fn update_all(&mut self, cb: fn(doc: &T) -> Option<T>) -> Result<Vec<String>> {
+    fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<String>> {
         self.assert_not_to_be_removed("update_all")?;
 
         let mut updated = Vec::new();

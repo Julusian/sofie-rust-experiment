@@ -22,7 +22,7 @@ pub trait DbCacheWriteObject<T: for<'a> DocWithId<'a>>: DbCacheReadObject<T> {
     fn discard_changes(&mut self);
     fn update_database_with_data(&mut self) -> Result<()>; // TODO
 
-    fn update(&mut self, cb: fn(doc: &T) -> Option<T>) -> Result<bool>;
+    fn update<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<bool>;
 }
 
 pub struct DbCacheWriteObjectImpl<T: for<'a> DocWithId<'a>> {
@@ -71,7 +71,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteObject<T> for DbCacheWriteObjectImpl<
         Err(CacheObjectError::NotImplemented)
     }
 
-    fn update(&mut self, cb: fn(doc: &T) -> Option<T>) -> Result<bool> {
+    fn update<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<bool> {
         self.assert_not_to_be_removed("update")?;
 
         let new_doc = cb(&self.document);

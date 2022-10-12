@@ -2,7 +2,9 @@
 extern crate protected_id_derive;
 extern crate uuid;
 
-mod cache;
+pub mod cache;
+pub mod data_model;
+pub mod playout;
 // mod types;
 
 fn main() {
