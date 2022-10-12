@@ -24,6 +24,7 @@ pub struct PartInstance {
 
     pub timings: PartInstanceTimings,
     pub is_taken: bool,
+    pub reset: bool,
 
     pub consumes_next_segment_id: bool,
 

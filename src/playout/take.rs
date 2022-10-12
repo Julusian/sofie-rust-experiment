@@ -1,4 +1,4 @@
-use std::ops::Add;
+use std::{collections::HashSet, ops::Add};
 
 use chrono::{DateTime, Duration, Utc};
 
@@ -194,7 +194,7 @@ pub fn take_next_part_inner(mut cache: PlayoutCache, now: DateTime<Utc>) -> Resu
         })
         .map_err(|_| "Failed to update taken partinstance".to_string())?;
 
-    // 	resetPreviousSegment(cache) TODO
+    reset_previous_segment(&mut cache)?;
 
     // Once everything is synced, we can choose the next part
     // 	await setNextPart(context, cache, nextPart) TODO
@@ -235,6 +235,57 @@ pub fn clear_next_segment_id(
                 Some(res)
             })
             .map_err(|_| "Failed to clear nextSegmentId".to_string())?;
+    }
+
+    Ok(())
+}
+
+pub fn reset_previous_segment(cache: &mut PlayoutCache) -> Result<(), String> {
+    let current_part_instance = cache.get_current_part_instance();
+    let previous_part_instance = cache.get_previous_part_instance();
+
+    // If the playlist is looping and
+    // If the previous and current part are not in the same segment, then we have just left a segment
+    if let Some(previous_part_instance) = previous_part_instance {
+        if cache.playlist.doc().loop_
+            && Some(&previous_part_instance.segment_id)
+                != current_part_instance.as_ref().map(|part| &part.segment_id)
+        {
+            // Reset the old segment
+            let segment_id = &previous_part_instance.segment_id;
+
+            let updated_ids = cache
+                .part_instances
+                .update_all(|doc| {
+                    if !doc.reset && &doc.segment_id == segment_id {
+                        let mut res = doc.clone();
+
+                        res.reset = true;
+
+                        Some(res)
+                    } else {
+                        None
+                    }
+                })
+                .map_err(|_| "Failed to reset PartInstances")?;
+
+            let updated_ids_set: HashSet<String> = HashSet::from_iter(updated_ids.into_iter());
+
+            cache
+                .piece_instances
+                .update_all(|doc| {
+                    if updated_ids_set.contains(&doc.part_instance_id) {
+                        let mut res = doc.clone();
+
+                        res.reset = true;
+
+                        Some(res)
+                    } else {
+                        None
+                    }
+                })
+                .map_err(|_| "Failed to reset PieceInstances")?;
+        }
     }
 
     Ok(())

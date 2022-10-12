@@ -5,8 +5,8 @@ use crate::{
         object::{DbCacheReadObject, DbCacheWriteObjectImpl},
     },
     data_model::{
-        part::Part, part_instance::PartInstance, rundown_playlist::RundownPlaylist,
-        segment::Segment,
+        part::Part, part_instance::PartInstance, piece_instance::PieceInstance,
+        rundown_playlist::RundownPlaylist, segment::Segment,
     },
 };
 
@@ -29,7 +29,7 @@ pub struct PlayoutCache {
     pub segments: DbCacheWriteCollectionImpl<Segment>,
     pub parts: DbCacheWriteCollectionImpl<Part>,
     pub part_instances: DbCacheWriteCollectionImpl<PartInstance>,
-    pub piece_instances: DbCacheWriteCollectionImpl<FakeDoc>,
+    pub piece_instances: DbCacheWriteCollectionImpl<PieceInstance>,
 
     pub baseline_objects: DbCacheWriteCollectionImpl<FakeDoc>,
     pub timeline: DbCacheWriteObjectImpl<FakeDoc>,
