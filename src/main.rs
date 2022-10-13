@@ -2,6 +2,7 @@
 extern crate protected_id_derive;
 extern crate uuid;
 
+pub mod lib;
 pub mod cache;
 pub mod data_model;
 pub mod playout;

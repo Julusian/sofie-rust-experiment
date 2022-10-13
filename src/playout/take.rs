@@ -1,6 +1,7 @@
 use std::{collections::HashSet, ops::Add};
 
 use chrono::{DateTime, Duration, Utc};
+use sofie_rust_experiment::get_random_id;
 
 use super::{
     cache::PlayoutCache, lib::is_too_close_to_autonext, select_next_part::select_next_part,
@@ -12,6 +13,8 @@ use crate::{
     },
     data_model::{
         part_instance::PartInstance,
+        piece::Piece,
+        piece_instance::{PieceInstance, PieceInstanceInfinite},
         rundown_playlist::{progress_hold_state, RundownHoldState},
     },
 };
@@ -203,7 +206,15 @@ pub fn take_next_part_inner(mut cache: PlayoutCache, now: DateTime<Utc>) -> Resu
     if cache.playlist.doc().previous_part_instance_id.is_some()
         && cache.playlist.doc().hold_state == RundownHoldState::ACTIVE
     {
-        // 		startHold(context, cache, playlistActivationId, currentPartInstance, nextPartInstance) TODO
+        let hold_from_part_instance =
+            &current_part_instance.ok_or_else(|| format!("previousPart not found!"))?;
+
+        start_hold(
+            &mut cache,
+            &playlist_activation_id,
+            hold_from_part_instance,
+            &take_part_instance,
+        )?;
     }
 
     // 	await afterTake(context, cache, takePartInstance, timeOffset) TODO
@@ -290,3 +301,291 @@ pub fn reset_previous_segment(cache: &mut PlayoutCache) -> Result<(), String> {
 
     Ok(())
 }
+
+// async function afterTakeUpdateTimingsAndEvents(
+// 	context: JobContext,
+// 	cache: CacheForPlayout,
+// 	showStyle: ReadonlyDeep<ProcessedShowStyleCompound>,
+// 	blueprint: ReadonlyDeep<WrappedShowStyleBlueprint>,
+// 	isFirstTake: boolean,
+// 	takeDoneTime: number
+// ): Promise<void> {
+// 	const { currentPartInstance: takePartInstance, previousPartInstance } = getSelectedPartInstancesFromCache(cache)
+
+// 	if (takePartInstance) {
+// 		// Simulate playout, if no gateway
+// 		const playoutDevices = cache.PeripheralDevices.findAll((d) => d.type === PeripheralDeviceType.PLAYOUT)
+// 		if (playoutDevices.length === 0) {
+// 			logger.info(
+// 				`No Playout gateway attached to studio, reporting PartInstance "${
+// 					takePartInstance._id
+// 				}" to have started playback on timestamp ${new Date(takeDoneTime).toISOString()}`
+// 			)
+// 			reportPartInstanceHasStarted(context, cache, takePartInstance, takeDoneTime)
+
+// 			if (previousPartInstance) {
+// 				logger.info(
+// 					`Also reporting PartInstance "${
+// 						previousPartInstance._id
+// 					}" to have stopped playback on timestamp ${new Date(takeDoneTime).toISOString()}`
+// 				)
+// 				reportPartInstanceHasStopped(context, cache, previousPartInstance, takeDoneTime)
+// 			}
+
+// 			// Future: is there anything we can do for simulating autoNext?
+// 		}
+
+// 		const takeRundown = takePartInstance ? cache.Rundowns.findOne(takePartInstance.rundownId) : undefined
+
+// 		if (isFirstTake && takeRundown) {
+// 			if (blueprint.blueprint.onRundownFirstTake) {
+// 				const span = context.startSpan('blueprint.onRundownFirstTake')
+// 				try {
+// 					await blueprint.blueprint.onRundownFirstTake(
+// 						new PartEventContext(
+// 							'onRundownFirstTake',
+// 							context.studio,
+// 							context.getStudioBlueprintConfig(),
+// 							showStyle,
+// 							context.getShowStyleBlueprintConfig(showStyle),
+// 							takeRundown,
+// 							takePartInstance
+// 						)
+// 					)
+// 				} catch (err) {
+// 					logger.error(`Error in showStyleBlueprint.onRundownFirstTake: ${stringifyError(err)}`)
+// 				}
+// 				if (span) span.end()
+// 			}
+// 		}
+
+// 		if (blueprint.blueprint.onPostTake && takeRundown) {
+// 			const span = context.startSpan('blueprint.onPostTake')
+// 			try {
+// 				await blueprint.blueprint.onPostTake(
+// 					new PartEventContext(
+// 						'onPostTake',
+// 						context.studio,
+// 						context.getStudioBlueprintConfig(),
+// 						showStyle,
+// 						context.getShowStyleBlueprintConfig(showStyle),
+// 						takeRundown,
+// 						takePartInstance
+// 					)
+// 				)
+// 			} catch (err) {
+// 				logger.error(`Error in showStyleBlueprint.onPostTake: ${stringifyError(err)}`)
+// 			}
+// 			if (span) span.end()
+// 		}
+// 	}
+// }
+
+// export function updatePartInstanceOnTake(
+// 	context: JobContext,
+// 	cache: CacheForPlayout,
+// 	showStyle: ReadonlyDeep<ProcessedShowStyleCompound>,
+// 	blueprint: ReadonlyDeep<WrappedShowStyleBlueprint>,
+// 	takeRundown: DBRundown,
+// 	takePartInstance: DBPartInstance,
+// 	currentPartInstance: DBPartInstance | undefined
+// ): void {
+// 	const playlist = cache.Playlist.doc
+
+// 	// TODO - the state could change after this sampling point. This should be handled properly
+// 	let previousPartEndState: PartEndState | undefined = undefined
+// 	if (blueprint.blueprint.getEndStateForPart && currentPartInstance) {
+// 		try {
+// 			const time = getCurrentTime()
+
+// 			const resolvedPieces = getResolvedPieces(context, cache, showStyle.sourceLayers, currentPartInstance)
+
+// 			const span = context.startSpan('blueprint.getEndStateForPart')
+// 			const context2 = new RundownContext(
+// 				{
+// 					name: `${playlist.name}`,
+// 					identifier: `playlist=${playlist._id},currentPartInstance=${
+// 						currentPartInstance._id
+// 					},execution=${getRandomId()}`,
+// 				},
+// 				context.studio,
+// 				context.getStudioBlueprintConfig(),
+// 				showStyle,
+// 				context.getShowStyleBlueprintConfig(showStyle),
+// 				takeRundown
+// 			)
+// 			previousPartEndState = blueprint.blueprint.getEndStateForPart(
+// 				context2,
+// 				playlist.previousPersistentState,
+// 				convertPartInstanceToBlueprints(currentPartInstance),
+// 				resolvedPieces.map(convertResolvedPieceInstanceToBlueprints),
+// 				time
+// 			)
+// 			if (span) span.end()
+// 			logger.info(`Calculated end state in ${getCurrentTime() - time}ms`)
+// 		} catch (err) {
+// 			logger.error(`Error in showStyleBlueprint.getEndStateForPart: ${stringifyError(err)}`)
+// 			previousPartEndState = undefined
+// 		}
+// 	}
+
+// 	// calculate and cache playout timing properties, so that we don't depend on the previousPartInstance:
+// 	const tmpTakePieces = processAndPrunePieceInstanceTimings(
+// 		showStyle.sourceLayers,
+// 		cache.PieceInstances.findAll((p) => p.partInstanceId === takePartInstance._id),
+// 		0
+// 	)
+// 	const partPlayoutTimings = calculatePartTimings(
+// 		cache.Playlist.doc.holdState,
+// 		currentPartInstance?.part,
+// 		cache.PieceInstances.findAll((p) => p.partInstanceId === currentPartInstance?._id).map((p) => p.piece),
+// 		takePartInstance.part,
+// 		tmpTakePieces.filter((p) => !p.infinite || p.infinite.infiniteInstanceIndex === 0).map((p) => p.piece)
+// 	)
+
+// 	cache.PartInstances.updateOne(takePartInstance._id, (p) => {
+// 		p.isTaken = true
+// 		p.partPlayoutTimings = partPlayoutTimings
+
+// 		if (previousPartEndState) {
+// 			p.previousPartEndState = previousPartEndState
+// 		}
+
+// 		return p
+// 	})
+// }
+
+// export async function afterTake(
+// 	context: JobContext,
+// 	cache: CacheForPlayout,
+// 	takePartInstance: DBPartInstance,
+// 	timeOffsetIntoPart: number | null = null
+// ): Promise<void> {
+// 	const span = context.startSpan('afterTake')
+// 	// This function should be called at the end of a "take" event (when the Parts have been updated)
+// 	// or after a new part has started playing
+
+// 	await updateTimeline(context, cache, timeOffsetIntoPart || undefined)
+
+// 	cache.deferAfterSave(async () => {
+// 		// This is low-prio, defer so that it's executed well after publications has been updated,
+// 		// so that the playout gateway has haf the chance to learn about the timeline changes
+// 		if (takePartInstance.part.shouldNotifyCurrentPlayingPart) {
+// 			context
+// 				.queueEventJob(EventsJobs.NotifyCurrentlyPlayingPart, {
+// 					rundownId: takePartInstance.rundownId,
+// 					isRehearsal: !!cache.Playlist.doc.rehearsal,
+// 					partExternalId: takePartInstance.part.externalId,
+// 				})
+// 				.catch((e) => {
+// 					logger.warn(`Failed to queue NotifyCurrentlyPlayingPart job: ${e}`)
+// 				})
+// 		}
+// 	})
+
+// 	if (span) span.end()
+// }
+
+/**
+ * A Hold starts by extending the "extendOnHold"-able pieces in the previous Part.
+ */
+fn start_hold(
+    cache: &mut PlayoutCache,
+    activation_id: &String,
+    hold_from_part_instance: &PartInstance,
+    hold_to_part_instance: &PartInstance,
+) -> Result<(), String> {
+    let items_to_copy = cache.piece_instances.find_some(|doc| {
+        doc.part_instance_id == hold_from_part_instance.id && doc.piece.extend_on_hold
+    });
+
+    for instance in items_to_copy {
+        if instance.infinite.is_none() {
+            let infinite_instance_id = get_random_id();
+
+            // mark current one as infinite
+            cache
+                .piece_instances
+                .update_one(&instance.id, |doc| {
+                    let mut res = doc.clone();
+
+                    res.infinite = Some(PieceInstanceInfinite {
+                        infinite_instance_id: infinite_instance_id.clone(),
+                        infinite_instance_index: 0,
+                        infinite_piece_id: instance.piece.id.clone(),
+                        from_previous_part: false,
+                        from_hold: false,
+                    });
+
+                    Some(res)
+                })
+                .map_err(|_| format!("Failed to make held piece infinite"))?;
+
+            // make the extension
+            let mut new_instance_piece = instance.piece.clone();
+            // new_instance_piece.enable = { start: 0};
+            new_instance_piece.extend_on_hold = false;
+
+            let new_instance = PieceInstance {
+                id: format!("{}_hold", &instance.id),
+                // playlistActivationId: activationId,
+                // rundownId: instance.rundownId,
+                part_instance_id: hold_to_part_instance.id.clone(),
+                // dynamicallyInserted: getCurrentTime(),
+                piece: new_instance_piece,
+                reset: false,
+                infinite: Some(PieceInstanceInfinite {
+                    infinite_instance_id: infinite_instance_id,
+                    infinite_instance_index: 1,
+                    infinite_piece_id: instance.piece.id.clone(),
+                    from_previous_part: true,
+                    from_hold: true,
+                }),
+                // Preserve the timings from the playing instance
+                // reportedStartedPlayback: instance.reportedStartedPlayback,
+                // reportedStoppedPlayback: instance.reportedStoppedPlayback,
+            };
+
+            // TODO
+            // const content = newInstance.piece.content as VTContent | undefined
+            // if (content && content.fileName && content.sourceDuration && instance.plannedStartedPlayback) {
+            // 	content.seek = Math.min(content.sourceDuration, getCurrentTime() - instance.plannedStartedPlayback)
+            // }
+
+            // This gets deleted once the nextpart is activated, so it doesnt linger for long
+            cache
+                .piece_instances
+                .replace_one(new_instance)
+                .map_err(|_| format!("Failed to insert held piece"))?;
+        }
+    }
+    Ok(())
+}
+
+// async function completeHold(
+// 	context: JobContext,
+// 	cache: CacheForPlayout,
+// 	showStyleCompound: ReadonlyDeep<ProcessedShowStyleCompound>,
+// 	currentPartInstance: DBPartInstance | undefined
+// ): Promise<void> {
+// 	cache.Playlist.update((p) => {
+// 		p.holdState = RundownHoldState.COMPLETE
+// 		return p
+// 	})
+
+// 	if (cache.Playlist.doc.currentPartInstanceId) {
+// 		if (!currentPartInstance) throw new Error('currentPart not found!')
+
+// 		// Clear the current extension line
+// 		innerStopPieces(
+// 			context,
+// 			cache,
+// 			showStyleCompound.sourceLayers,
+// 			currentPartInstance,
+// 			(p) => !!p.infinite?.fromHold,
+// 			undefined
+// 		)
+// 	}
+
+// 	await updateTimeline(context, cache)
+// }

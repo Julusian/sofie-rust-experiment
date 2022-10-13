@@ -24,9 +24,9 @@ pub trait DbCacheReadCollection<T: for<'a> DocWithId<'a>> {
     fn name(&self) -> &str;
 
     fn find_all(&self) -> Vec<T>;
-    fn find_some(&self, cb: fn(doc: &T) -> bool) -> Vec<T>;
+    fn find_some<F: Fn(&T) -> bool>(&self, cb: F) -> Vec<T>;
     fn find_one_by_id(&self, id: &str) -> Option<T>;
-    fn find_one(&self, cb: fn(doc: &T) -> bool) -> Option<T>;
+    fn find_one<F: Fn(&T) -> bool>(&self, cb: F) -> Option<T>;
 }
 
 pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a>>: DbCacheReadCollection<T> {
@@ -35,7 +35,7 @@ pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a>>: DbCacheReadCollectio
 
     fn insert(&mut self, doc: T) -> Result<()>;
     fn remove_by_id(&mut self, id: &str) -> Result<bool>;
-    fn remove_by_filter(&mut self, cb: fn(doc: &T) -> bool) -> Result<Vec<String>>;
+    fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<String>>;
 
     fn discard_changes(&mut self);
     fn update_database_with_data(&mut self) -> Result<()>; // TODO
@@ -81,7 +81,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheReadCollection<T> for DbCacheWriteCollecti
             .cloned()
             .collect()
     }
-    fn find_some(&self, cb: fn(doc: &T) -> bool) -> Vec<T> {
+    fn find_some<F: Fn(&T) -> bool>(&self, cb: F) -> Vec<T> {
         let mut res = Vec::new();
 
         for doc in self.documents.iter() {
@@ -106,7 +106,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheReadCollection<T> for DbCacheWriteCollecti
             None
         }
     }
-    fn find_one(&self, cb: fn(doc: &T) -> bool) -> Option<T> {
+    fn find_one<F: Fn(&T) -> bool>(&self, cb: F) -> Option<T> {
         for doc in self.documents.iter() {
             if let Some(doc) = doc.1 {
                 if cb(&doc.document) {
@@ -171,7 +171,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         }
     }
 
-    fn remove_by_filter(&mut self, cb: fn(doc: &T) -> bool) -> Result<Vec<String>> {
+    fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<String>> {
         self.assert_not_to_be_removed("remove_by_filter")?;
 
         let mut removed = Vec::new();
