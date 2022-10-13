@@ -5,6 +5,8 @@ use sofie_rust_experiment::get_random_id;
 
 use super::{
     cache::{FakeDoc, PlayoutCache},
+    context::JobContext,
+    infinites::processAndPrunePieceInstanceTimings,
     lib::is_too_close_to_autonext,
     select_next_part::select_next_part,
 };
@@ -17,11 +19,14 @@ use crate::{
         part_instance::PartInstance,
         piece::Piece,
         piece_instance::{PieceInstance, PieceInstanceInfinite},
+        rundown::Rundown,
         rundown_playlist::{progress_hold_state, RundownHoldState},
+        show_style_base::ShowStyleBase,
     },
 };
 
 pub async fn take_next_part_inner(
+    context: JobContext,
     mut cache: PlayoutCache,
     now: DateTime<Utc>,
 ) -> Result<(), String> {
@@ -61,7 +66,10 @@ pub async fn take_next_part_inner(
         }
     }?;
 
-    // 	const pShowStyle = context.getShowStyleCompound(currentRundown.showStyleVariantId, currentRundown.showStyleBaseId)
+    let p_show_style = context.get_show_style_compound(
+        &current_rundown.show_style_variant_id,
+        &current_rundown.show_style_base_id,
+    );
 
     if let Some(current_part_instance) = &current_part_instance {
         let now = Utc::now(); // TODO - this replaces a now above?
@@ -154,7 +162,7 @@ pub async fn take_next_part_inner(
     );
 
     // TODO
-    // 	const showStyle = await pShowStyle
+    let show_style = p_show_style.await?;
     // 	const blueprint = await context.getShowStyleBlueprint(showStyle._id)
     // 	if (blueprint.blueprint.onPreTake) {
     // 		const span = context.startSpan('blueprint.onPreTake')
@@ -176,7 +184,15 @@ pub async fn take_next_part_inner(
     // 		if (span) span.end()
     // 	}
 
-    // 	updatePartInstanceOnTake(context, cache, showStyle, blueprint, takeRundown, takePartInstance, currentPartInstance)
+    updatePartInstanceOnTake(
+        &context,
+        &mut cache,
+        &show_style,
+        // blueprint,
+        &take_rundown,
+        &take_part_instance,
+        current_part_instance.as_ref(),
+    )?;
 
     cache
         .playlist
@@ -390,79 +406,87 @@ pub fn reset_previous_segment(cache: &mut PlayoutCache) -> Result<(), String> {
 // 	}
 // }
 
-// export function updatePartInstanceOnTake(
-// 	context: JobContext,
-// 	cache: CacheForPlayout,
-// 	showStyle: ReadonlyDeep<ProcessedShowStyleCompound>,
-// 	blueprint: ReadonlyDeep<WrappedShowStyleBlueprint>,
-// 	takeRundown: DBRundown,
-// 	takePartInstance: DBPartInstance,
-// 	currentPartInstance: DBPartInstance | undefined
-// ): void {
-// 	const playlist = cache.Playlist.doc
+pub fn updatePartInstanceOnTake(
+    context: &JobContext,
+    cache: &mut PlayoutCache,
+    show_style: &ShowStyleBase,
+    // 	blueprint: ReadonlyDeep<WrappedShowStyleBlueprint>,
+    take_rundown: &Rundown,
+    take_part_instance: &PartInstance,
+    current_part_instance: Option<&PartInstance>,
+) -> Result<(), String> {
+    let playlist = cache.playlist.doc();
 
-// 	// TODO - the state could change after this sampling point. This should be handled properly
-// 	let previousPartEndState: PartEndState | undefined = undefined
-// 	if (blueprint.blueprint.getEndStateForPart && currentPartInstance) {
-// 		try {
-// 			const time = getCurrentTime()
+    // 	// TODO - the state could change after this sampling point. This should be handled properly
+    // 	let previousPartEndState: PartEndState | undefined = undefined
+    // 	if (blueprint.blueprint.getEndStateForPart && currentPartInstance) {
+    // 		try {
+    // 			const time = getCurrentTime()
 
-// 			const resolvedPieces = getResolvedPieces(context, cache, showStyle.sourceLayers, currentPartInstance)
+    // 			const resolvedPieces = getResolvedPieces(context, cache, showStyle.sourceLayers, currentPartInstance)
 
-// 			const span = context.startSpan('blueprint.getEndStateForPart')
-// 			const context2 = new RundownContext(
-// 				{
-// 					name: `${playlist.name}`,
-// 					identifier: `playlist=${playlist._id},currentPartInstance=${
-// 						currentPartInstance._id
-// 					},execution=${getRandomId()}`,
-// 				},
-// 				context.studio,
-// 				context.getStudioBlueprintConfig(),
-// 				showStyle,
-// 				context.getShowStyleBlueprintConfig(showStyle),
-// 				takeRundown
-// 			)
-// 			previousPartEndState = blueprint.blueprint.getEndStateForPart(
-// 				context2,
-// 				playlist.previousPersistentState,
-// 				convertPartInstanceToBlueprints(currentPartInstance),
-// 				resolvedPieces.map(convertResolvedPieceInstanceToBlueprints),
-// 				time
-// 			)
-// 			if (span) span.end()
-// 			logger.info(`Calculated end state in ${getCurrentTime() - time}ms`)
-// 		} catch (err) {
-// 			logger.error(`Error in showStyleBlueprint.getEndStateForPart: ${stringifyError(err)}`)
-// 			previousPartEndState = undefined
-// 		}
-// 	}
+    // 			const span = context.startSpan('blueprint.getEndStateForPart')
+    // 			const context2 = new RundownContext(
+    // 				{
+    // 					name: `${playlist.name}`,
+    // 					identifier: `playlist=${playlist._id},currentPartInstance=${
+    // 						currentPartInstance._id
+    // 					},execution=${getRandomId()}`,
+    // 				},
+    // 				context.studio,
+    // 				context.getStudioBlueprintConfig(),
+    // 				showStyle,
+    // 				context.getShowStyleBlueprintConfig(showStyle),
+    // 				takeRundown
+    // 			)
+    // 			previousPartEndState = blueprint.blueprint.getEndStateForPart(
+    // 				context2,
+    // 				playlist.previousPersistentState,
+    // 				convertPartInstanceToBlueprints(currentPartInstance),
+    // 				resolvedPieces.map(convertResolvedPieceInstanceToBlueprints),
+    // 				time
+    // 			)
+    // 			if (span) span.end()
+    // 			logger.info(`Calculated end state in ${getCurrentTime() - time}ms`)
+    // 		} catch (err) {
+    // 			logger.error(`Error in showStyleBlueprint.getEndStateForPart: ${stringifyError(err)}`)
+    // 			previousPartEndState = undefined
+    // 		}
+    // 	}
 
-// 	// calculate and cache playout timing properties, so that we don't depend on the previousPartInstance:
-// 	const tmpTakePieces = processAndPrunePieceInstanceTimings(
-// 		showStyle.sourceLayers,
-// 		cache.PieceInstances.findAll((p) => p.partInstanceId === takePartInstance._id),
-// 		0
-// 	)
-// 	const partPlayoutTimings = calculatePartTimings(
-// 		cache.Playlist.doc.holdState,
-// 		currentPartInstance?.part,
-// 		cache.PieceInstances.findAll((p) => p.partInstanceId === currentPartInstance?._id).map((p) => p.piece),
-// 		takePartInstance.part,
-// 		tmpTakePieces.filter((p) => !p.infinite || p.infinite.infiniteInstanceIndex === 0).map((p) => p.piece)
-// 	)
+    // calculate and cache playout timing properties, so that we don't depend on the previousPartInstance:
+    // TODO
+    let tmp_take_pieces_raw = cache
+        .piece_instances
+        .find_some(|p| p.part_instance_id == take_part_instance.id);
+    let tmpTakePieces = processAndPrunePieceInstanceTimings(
+        &show_style.source_layers,
+        &tmp_take_pieces_raw,
+        0,
+        false,
+        false,
+    );
+    // 	const partPlayoutTimings = calculatePartTimings(
+    // 		cache.Playlist.doc.holdState,
+    // 		currentPartInstance?.part,
+    // 		cache.PieceInstances.findAll((p) => p.partInstanceId === currentPartInstance?._id).map((p) => p.piece),
+    // 		takePartInstance.part,
+    // 		tmpTakePieces.filter((p) => !p.infinite || p.infinite.infiniteInstanceIndex === 0).map((p) => p.piece)
+    // 	)
 
-// 	cache.PartInstances.updateOne(takePartInstance._id, (p) => {
-// 		p.isTaken = true
-// 		p.partPlayoutTimings = partPlayoutTimings
+    // 	cache.PartInstances.updateOne(takePartInstance._id, (p) => {
+    // 		p.isTaken = true
+    // 		p.partPlayoutTimings = partPlayoutTimings
 
-// 		if (previousPartEndState) {
-// 			p.previousPartEndState = previousPartEndState
-// 		}
+    // 		if (previousPartEndState) {
+    // 			p.previousPartEndState = previousPartEndState
+    // 		}
 
-// 		return p
-// 	})
-// }
+    // 		return p
+    // 	})
+
+    Ok(())
+}
 
 // export async function afterTake(
 // 	context: JobContext,
@@ -543,6 +567,8 @@ fn start_hold(
                 // dynamicallyInserted: getCurrentTime(),
                 piece: new_instance_piece,
                 reset: false,
+                disabled: false,
+                dynamically_inserted: None,
                 infinite: Some(PieceInstanceInfinite {
                     infinite_instance_id: infinite_instance_id,
                     infinite_instance_index: 1,

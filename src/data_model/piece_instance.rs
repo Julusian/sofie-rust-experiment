@@ -20,7 +20,9 @@ pub struct PieceInstance {
     pub piece: Piece,
 
     pub reset: bool,
+    pub disabled: bool,
 
+    pub dynamically_inserted: Option<u64>,
     pub infinite: Option<PieceInstanceInfinite>,
 }
 impl<'a> DocWithId<'a> for PieceInstance {

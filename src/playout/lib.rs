@@ -37,25 +37,3 @@ pub fn is_too_close_to_autonext(current_part_instance: &PartInstance, is_take: b
         }
     }
 }
-
-// export function isTooCloseToAutonext(
-// 	currentPartInstance: ReadonlyDeep<DBPartInstance> | undefined,
-// 	isTake?: boolean
-// ): boolean {
-// 	if (!currentPartInstance || !currentPartInstance.part.autoNext) return false
-
-// 	const debounce = isTake ? AUTOTAKE_TAKE_DEBOUNCE : AUTOTAKE_UPDATE_DEBOUNCE
-
-// 	const start = currentPartInstance.timings?.plannedStartedPlayback
-// 	if (start !== undefined && currentPartInstance.part.expectedDuration) {
-// 		// date.now - start = playback duration, duration + offset gives position in part
-// 		const playbackDuration = getCurrentTime() - start
-
-// 		// If there is an auto next planned
-// 		if (Math.abs(currentPartInstance.part.expectedDuration - playbackDuration) < debounce) {
-// 			return true
-// 		}
-// 	}
-
-// 	return false
-// }
