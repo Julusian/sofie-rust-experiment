@@ -9,6 +9,8 @@ pub struct PartInstanceTimings {
     pub planned_started_playback: Option<DateTime<Utc>>,
     pub planned_stopped_playback: Option<DateTime<Utc>>,
 
+    pub set_as_next: DateTime<Utc>,
+
     pub take: Option<DateTime<Utc>>,
     pub play_offset: Option<Duration>,
 }
@@ -33,10 +35,14 @@ pub struct PartInstance {
     pub rundown_id: String,
     pub segment_id: String,
 
+    pub segment_playout_id: String,
+
     pub part: Part,
 
     pub timings: PartInstanceTimings,
     pub is_taken: bool,
+    pub take_count: u64,
+    pub rehearsal: bool,
     pub reset: bool,
     pub part_playout_timings: Option<PartCalculatedTimings>,
 

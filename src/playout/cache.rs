@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::{
     cache::{
         collection::{DbCacheReadCollection, DbCacheWriteCollectionImpl},
@@ -73,6 +75,14 @@ impl PlayoutCache {
             &self.segments,
             &self.playlist.doc().rundown_ids_in_order,
         )
+    }
+
+    pub fn get_rundown_ids_from_cache(&self) -> Vec<String> {
+        self.rundowns
+            .find_all()
+            .into_iter()
+            .map(|rd| rd.id)
+            .collect_vec()
     }
 }
 

@@ -9,6 +9,7 @@ use super::{
     infinites::processAndPrunePieceInstanceTimings,
     lib::is_too_close_to_autonext,
     select_next_part::select_next_part,
+    set_next_part::{setNextPart, SetNextPartTarget},
     timings::calculatePartTimings,
 };
 use crate::{
@@ -22,7 +23,7 @@ use crate::{
         piece_instance::{PieceInstance, PieceInstanceInfinite},
         rundown::Rundown,
         rundown_playlist::{progress_hold_state, RundownHoldState},
-        show_style_base::ShowStyleBase,
+        show_style_base::{self, ShowStyleBase},
     },
 };
 
@@ -73,8 +74,6 @@ pub async fn take_next_part_inner(
     );
 
     if let Some(current_part_instance) = &current_part_instance {
-        let now = Utc::now(); // TODO - this replaces a now above?
-
         if let Some(block_take_until) = current_part_instance.block_take_until {
             let remaining_time = block_take_until.signed_duration_since(now);
             if remaining_time > Duration::zero() {
@@ -83,7 +82,7 @@ pub async fn take_next_part_inner(
                     block_take_until,
                     remaining_time.num_milliseconds()
                 );
-                return Err("TakeBlockedDuration".to_string()); // TODO - UserError
+                return Err("TakeBlockedDuration".to_string());
             }
         }
 
@@ -101,7 +100,7 @@ pub async fn take_next_part_inner(
         }
 
         if is_too_close_to_autonext(&current_part_instance, true) {
-            return Err("TakeCloseToAutonext".to_string()); // TODO - UserError
+            return Err("TakeCloseToAutonext".to_string());
         }
     }
 
@@ -117,12 +116,9 @@ pub async fn take_next_part_inner(
 
         // If hold is active, then this take is to clear it
     } else if cache.playlist.doc().hold_state == RundownHoldState::ACTIVE {
-        // TODO
-        let show_style_compound = FakeDoc {
-            id: get_random_id(),
-        };
+        let show_style = p_show_style.await?;
 
-        complete_hold(cache, show_style_compound).await?;
+        complete_hold(cache, &show_style).await?;
 
         return Ok(());
     }
@@ -162,7 +158,6 @@ pub async fn take_next_part_inner(
         true,
     );
 
-    // TODO
     let show_style = p_show_style.await?;
     // 	const blueprint = await context.getShowStyleBlueprint(showStyle._id)
     // 	if (blueprint.blueprint.onPreTake) {
@@ -226,7 +221,14 @@ pub async fn take_next_part_inner(
     reset_previous_segment(&mut cache)?;
 
     // Once everything is synced, we can choose the next part
-    // 	await setNextPart(context, cache, nextPart) TODO
+    setNextPart(
+        &context,
+        &mut cache,
+        next_part.map(|p| SetNextPartTarget::Part(p)),
+        false,
+        None,
+    )
+    .await?;
 
     // Setup the parts for the HOLD we are starting
     if cache.playlist.doc().previous_part_instance_id.is_some()
@@ -624,10 +626,7 @@ fn start_hold(
     Ok(())
 }
 
-async fn complete_hold(
-    mut cache: PlayoutCache,
-    show_style_compound: FakeDoc,
-) -> Result<(), String> {
+async fn complete_hold(mut cache: PlayoutCache, _show_style: &ShowStyleBase) -> Result<(), String> {
     cache
         .playlist
         .update(|doc| {

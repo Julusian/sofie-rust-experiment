@@ -22,6 +22,7 @@ pub struct Part {
     pub id: String,
     pub rank: usize,
 
+    pub rundown_id: String,
     pub segment_id: String,
 
     // pub autonext: bool, Implied by autonext_overlap being defined

@@ -23,6 +23,7 @@ pub struct RundownPlaylist {
     pub id: String,
 
     pub activation_id: Option<String>,
+    pub rehearsal: bool,
     pub hold_state: RundownHoldState,
 
     pub current_part_instance_id: Option<String>,
@@ -30,6 +31,7 @@ pub struct RundownPlaylist {
     pub previous_part_instance_id: Option<String>,
     pub next_segment_id: Option<String>,
     pub next_time_offset: Option<Duration>,
+    pub next_part_manual: bool,
 
     pub started_playback: Option<DateTime<Utc>>,
 
