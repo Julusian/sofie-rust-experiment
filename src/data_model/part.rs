@@ -11,6 +11,11 @@ pub struct PartInTransition {
     /** Duration the pieces of the part should be delayed for once the transition starts. Typically the duration until the new part is in-vision */
     pub part_content_delay_duration: Duration,
 }
+#[derive(Clone)]
+pub struct PartOutTransition {
+    /** How long to keep this part alive after taken out  */
+    pub duration: Duration,
+}
 
 #[derive(Clone)]
 pub struct Part {
@@ -19,9 +24,12 @@ pub struct Part {
 
     pub segment_id: String,
 
-    pub autonext: bool,
+    // pub autonext: bool, Implied by autonext_overlap being defined
+    pub autonext_overlap: Option<Duration>,
+
     pub disable_next_in_transition: bool,
     pub in_transition: Option<PartInTransition>,
+    pub out_transition: Option<PartOutTransition>,
     pub untimed: bool,
 
     pub expected_duration: Option<Duration>,

@@ -2,7 +2,7 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::cache::doc::DocWithId;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum RundownHoldState {
     NONE = 0,
     PENDING = 1,  // During STK

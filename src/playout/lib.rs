@@ -9,7 +9,7 @@ use crate::data_model::part_instance::PartInstance;
  */
 
 pub fn is_too_close_to_autonext(current_part_instance: &PartInstance, is_take: bool) -> bool {
-    if !current_part_instance.part.autonext {
+    if current_part_instance.part.autonext_overlap.is_none() {
         false
     } else {
         // TODO - make constant

@@ -9,6 +9,7 @@ use super::{
     infinites::processAndPrunePieceInstanceTimings,
     lib::is_too_close_to_autonext,
     select_next_part::select_next_part,
+    timings::calculatePartTimings,
 };
 use crate::{
     cache::{
@@ -242,7 +243,7 @@ pub async fn take_next_part_inner(
         )?;
     }
 
-    // 	await afterTake(context, cache, takePartInstance, timeOffset) TODO
+    after_take(&context, &mut cache, &take_part_instance, time_offset).await;
 
     // Last: TODO
     // 	const takeDoneTime = getCurrentTime()
@@ -455,69 +456,95 @@ pub fn updatePartInstanceOnTake(
     // 	}
 
     // calculate and cache playout timing properties, so that we don't depend on the previousPartInstance:
-    // TODO
     let tmp_take_pieces_raw = cache
         .piece_instances
         .find_some(|p| p.part_instance_id == take_part_instance.id);
-    let tmpTakePieces = processAndPrunePieceInstanceTimings(
+    let tmp_take_pieces = processAndPrunePieceInstanceTimings(
         &show_style.source_layers,
         &tmp_take_pieces_raw,
         0,
         false,
         false,
     );
-    // 	const partPlayoutTimings = calculatePartTimings(
-    // 		cache.Playlist.doc.holdState,
-    // 		currentPartInstance?.part,
-    // 		cache.PieceInstances.findAll((p) => p.partInstanceId === currentPartInstance?._id).map((p) => p.piece),
-    // 		takePartInstance.part,
-    // 		tmpTakePieces.filter((p) => !p.infinite || p.infinite.infiniteInstanceIndex === 0).map((p) => p.piece)
-    // 	)
 
-    // 	cache.PartInstances.updateOne(takePartInstance._id, (p) => {
-    // 		p.isTaken = true
-    // 		p.partPlayoutTimings = partPlayoutTimings
+    let from_part = current_part_instance.map(|p| &p.part);
+    let from_pieces = current_part_instance.map(|instance| {
+        cache
+            .piece_instances
+            .find_some(|p| p.part_instance_id == instance.id)
+            .into_iter()
+            .map(|p| p.piece)
+            .collect::<Vec<_>>()
+    });
 
-    // 		if (previousPartEndState) {
-    // 			p.previousPartEndState = previousPartEndState
-    // 		}
+    let to_pieces = tmp_take_pieces
+        .into_iter()
+        .filter(|p| {
+            p.piece
+                .infinite
+                .as_ref()
+                .map_or(true, |inf| inf.infinite_instance_index == 0)
+        })
+        .map(|p| p.piece.piece)
+        .collect::<Vec<_>>();
 
-    // 		return p
-    // 	})
+    let part_playout_timings = calculatePartTimings(
+        cache.playlist.doc().hold_state,
+        from_part,
+        from_pieces.as_ref().map(|v| v.as_slice()),
+        &take_part_instance.part,
+        &to_pieces,
+    );
+
+    cache
+        .part_instances
+        .update_one(&take_part_instance.id, |doc| {
+            let mut res = doc.clone();
+
+            res.is_taken = true;
+            res.part_playout_timings = Some(part_playout_timings.clone());
+
+            // 		if (previousPartEndState) {
+            // 			p.previousPartEndState = previousPartEndState
+            // 		}
+
+            Some(res)
+        })
+        .map_err(|_| format!("Failed to update taken part instance"))?;
 
     Ok(())
 }
 
-// export async function afterTake(
-// 	context: JobContext,
-// 	cache: CacheForPlayout,
-// 	takePartInstance: DBPartInstance,
-// 	timeOffsetIntoPart: number | null = null
-// ): Promise<void> {
-// 	const span = context.startSpan('afterTake')
-// 	// This function should be called at the end of a "take" event (when the Parts have been updated)
-// 	// or after a new part has started playing
+pub async fn after_take(
+    _context: &JobContext,
+    _cache: &mut PlayoutCache,
+    _take_part_instance: &PartInstance,
+    _time_offset_into_part: Option<Duration>,
+) {
+    // 	const span = context.startSpan('afterTake')
+    // 	// This function should be called at the end of a "take" event (when the Parts have been updated)
+    // 	// or after a new part has started playing
 
-// 	await updateTimeline(context, cache, timeOffsetIntoPart || undefined)
+    // 	await updateTimeline(context, cache, timeOffsetIntoPart || undefined)
 
-// 	cache.deferAfterSave(async () => {
-// 		// This is low-prio, defer so that it's executed well after publications has been updated,
-// 		// so that the playout gateway has haf the chance to learn about the timeline changes
-// 		if (takePartInstance.part.shouldNotifyCurrentPlayingPart) {
-// 			context
-// 				.queueEventJob(EventsJobs.NotifyCurrentlyPlayingPart, {
-// 					rundownId: takePartInstance.rundownId,
-// 					isRehearsal: !!cache.Playlist.doc.rehearsal,
-// 					partExternalId: takePartInstance.part.externalId,
-// 				})
-// 				.catch((e) => {
-// 					logger.warn(`Failed to queue NotifyCurrentlyPlayingPart job: ${e}`)
-// 				})
-// 		}
-// 	})
+    // 	cache.deferAfterSave(async () => {
+    // 		// This is low-prio, defer so that it's executed well after publications has been updated,
+    // 		// so that the playout gateway has haf the chance to learn about the timeline changes
+    // 		if (takePartInstance.part.shouldNotifyCurrentPlayingPart) {
+    // 			context
+    // 				.queueEventJob(EventsJobs.NotifyCurrentlyPlayingPart, {
+    // 					rundownId: takePartInstance.rundownId,
+    // 					isRehearsal: !!cache.Playlist.doc.rehearsal,
+    // 					partExternalId: takePartInstance.part.externalId,
+    // 				})
+    // 				.catch((e) => {
+    // 					logger.warn(`Failed to queue NotifyCurrentlyPlayingPart job: ${e}`)
+    // 				})
+    // 		}
+    // 	})
 
-// 	if (span) span.end()
-// }
+    // 	if (span) span.end()
+}
 
 /**
  * A Hold starts by extending the "extendOnHold"-able pieces in the previous Part.

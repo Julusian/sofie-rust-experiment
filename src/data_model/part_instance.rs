@@ -13,6 +13,19 @@ pub struct PartInstanceTimings {
     pub play_offset: Option<Duration>,
 }
 
+/**
+ * Numbers are relative to the start of toPartGroup. Nothing should ever be negative, the pieces of toPartGroup will be delayed to allow for other things to complete.
+ * Note: once the part has been taken this should not be recalculated. Doing so may result in the timings shifting if the preroll required for the part is found to have changed
+ */
+#[derive(Clone)]
+pub struct PartCalculatedTimings {
+    pub in_transition_start: Option<Duration>, // The start time within the toPartGroup of the inTransition
+    pub to_part_delay: Duration, // How long after the start of toPartGroup should piece time 0 be
+    pub to_part_postroll: Duration,
+    pub from_part_remaining: Duration, // How long after the start of toPartGroup should fromPartGroup continue?
+    pub from_part_postroll: Duration,
+}
+
 #[derive(Clone)]
 pub struct PartInstance {
     pub id: String,
@@ -25,6 +38,7 @@ pub struct PartInstance {
     pub timings: PartInstanceTimings,
     pub is_taken: bool,
     pub reset: bool,
+    pub part_playout_timings: Option<PartCalculatedTimings>,
 
     pub consumes_next_segment_id: bool,
 

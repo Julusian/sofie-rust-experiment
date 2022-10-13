@@ -1,3 +1,5 @@
+use chrono::Duration;
+
 use crate::cache::doc::DocWithId;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
@@ -9,9 +11,11 @@ pub enum PieceEnableStart {
 #[derive(Clone)]
 pub struct PieceEnable {
     pub start: PieceEnableStart,
+
+    pub duration: Option<Duration>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum PieceLifespan {
     /** The Piece will only exist in it's designated Part. As soon as the playhead leaves the Part, the Piece will stop */
     WithinPart, // = 'part-only',
@@ -31,15 +35,26 @@ pub enum PieceLifespan {
      * when the playhead leaves the Rundown into a new Rundown with a different ShowStyle */
     OutOnShowStyleEnd, //= 'showstyle-end',
 }
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum IBlueprintPieceType {
+    Normal,        // = 'normal',
+    InTransition,  // = 'in-transition',
+    OutTransition, // = 'out-transition',
+}
+
 #[derive(Clone)]
 pub struct Piece {
     pub id: String,
 
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
+    pub preroll_duration: Duration,
+    pub postroll_duration: Duration,
 
     pub source_layer_id: String,
     pub virtual_: bool,
+    pub piece_type: IBlueprintPieceType,
 
     pub extend_on_hold: bool,
 }
