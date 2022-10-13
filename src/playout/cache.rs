@@ -12,7 +12,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct FakeDoc {
-    id: String,
+    pub id: String,
 }
 impl<'a> DocWithId<'a> for FakeDoc {
     fn doc_id(&'a self) -> &'a str {

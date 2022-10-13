@@ -4,7 +4,9 @@ use chrono::{DateTime, Duration, Utc};
 use sofie_rust_experiment::get_random_id;
 
 use super::{
-    cache::PlayoutCache, lib::is_too_close_to_autonext, select_next_part::select_next_part,
+    cache::{FakeDoc, PlayoutCache},
+    lib::is_too_close_to_autonext,
+    select_next_part::select_next_part,
 };
 use crate::{
     cache::{
@@ -19,7 +21,10 @@ use crate::{
     },
 };
 
-pub fn take_next_part_inner(mut cache: PlayoutCache, now: DateTime<Utc>) -> Result<(), String> {
+pub async fn take_next_part_inner(
+    mut cache: PlayoutCache,
+    now: DateTime<Utc>,
+) -> Result<(), String> {
     let playlist_activation_id = {
         let playlist = cache.playlist.doc();
 
@@ -104,7 +109,11 @@ pub fn take_next_part_inner(mut cache: PlayoutCache, now: DateTime<Utc>) -> Resu
         // If hold is active, then this take is to clear it
     } else if cache.playlist.doc().hold_state == RundownHoldState::ACTIVE {
         // TODO
-        // await completeHold(context, cache, await pShowStyle, currentPartInstance)
+        let show_style_compound = FakeDoc {
+            id: get_random_id(),
+        };
+
+        complete_hold(cache, show_style_compound).await?;
 
         return Ok(());
     }
@@ -562,30 +571,40 @@ fn start_hold(
     Ok(())
 }
 
-// async function completeHold(
-// 	context: JobContext,
-// 	cache: CacheForPlayout,
-// 	showStyleCompound: ReadonlyDeep<ProcessedShowStyleCompound>,
-// 	currentPartInstance: DBPartInstance | undefined
-// ): Promise<void> {
-// 	cache.Playlist.update((p) => {
-// 		p.holdState = RundownHoldState.COMPLETE
-// 		return p
-// 	})
+async fn complete_hold(
+    mut cache: PlayoutCache,
+    show_style_compound: FakeDoc,
+) -> Result<(), String> {
+    cache
+        .playlist
+        .update(|doc| {
+            let mut res = doc.clone();
 
-// 	if (cache.Playlist.doc.currentPartInstanceId) {
-// 		if (!currentPartInstance) throw new Error('currentPart not found!')
+            res.hold_state = RundownHoldState::COMPLETE;
 
-// 		// Clear the current extension line
-// 		innerStopPieces(
-// 			context,
-// 			cache,
-// 			showStyleCompound.sourceLayers,
-// 			currentPartInstance,
-// 			(p) => !!p.infinite?.fromHold,
-// 			undefined
-// 		)
-// 	}
+            Some(res)
+        })
+        .map_err(|_| format!("Failed to mark hold completed"))?;
 
-// 	await updateTimeline(context, cache)
-// }
+    if cache.playlist.doc().current_part_instance_id.is_some() {
+        let current_part_instance = cache
+            .get_current_part_instance()
+            .ok_or_else(|| format!("currentPart not found!"))?;
+
+        // Clear the current extension line
+        // TODO
+        // innerStopPieces(
+        // 	context,
+        // 	cache,
+        // 	showStyleCompound.sourceLayers,
+        // 	currentPartInstance,
+        // 	(p) => !!p.infinite?.fromHold,
+        // 	undefined
+        // )
+    }
+
+    // TODO
+    // await updateTimeline(context, cache)
+
+    Ok(())
+}
