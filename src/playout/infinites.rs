@@ -624,8 +624,8 @@ pub struct PieceInstanceWithTimings {
      *  - '#something.start + 100', if it was stopped by something that needs a preroll
      *  - '100', if not relative to now at all
      */
-    resolved_end_cap: ResolvedEndCap,
-    priority: i64,
+    pub resolved_end_cap: ResolvedEndCap,
+    pub priority: i64,
 }
 
 /**

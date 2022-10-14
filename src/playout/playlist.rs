@@ -1,52 +1,69 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
 
-use crate::data_model::ids::RundownId;
+use crate::data_model::{ids::RundownId, part::Part, segment::Segment};
 
-// export function sortSegmentsInRundowns<TSegment extends Pick<DBSegment, '_id' | 'rundownId' | '_rank'>>(
-// 	segments: TSegment[],
-// 	playlist: Pick<ReadonlyDeep<DBRundownPlaylist>, 'rundownIdsInOrder'>
-// ): TSegment[] {
-// 	const rundownRankLookup = new Map<RundownId, number>()
-// 	playlist.rundownIdsInOrder?.forEach((id, index) => rundownRankLookup.set(id, index))
+pub fn sort_segments_in_rundowns(
+    mut segments: Vec<Segment>,
+    rundown_ids_in_order: &Vec<RundownId>,
+) -> Vec<Segment> {
+    let rundown_rank_lookup = rundown_ids_in_order
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (id.clone(), i))
+        .collect::<HashMap<_, _>>();
 
-// 	return segments.sort((a, b) => {
-// 		if (a.rundownId === b.rundownId) {
-// 			return a._rank - b._rank
-// 		} else {
-// 			const rdA = rundownRankLookup.get(a.rundownId) ?? Number.POSITIVE_INFINITY
-// 			const rdB = rundownRankLookup.get(b.rundownId) ?? Number.POSITIVE_INFINITY
-// 			return rdA - rdB
-// 		}
-// 	})
-// }
+    segments.sort_by(|a, b| {
+        if a.rundown_id == b.rundown_id {
+            a.rank.cmp(&b.rank)
+        } else {
+            let rd_a = rundown_rank_lookup
+                .get(&a.rundown_id)
+                .unwrap_or(&usize::MAX);
+            let rd_b = rundown_rank_lookup
+                .get(&b.rundown_id)
+                .unwrap_or(&usize::MAX);
+            rd_a.cmp(rd_b)
+        }
+    });
+
+    segments
+}
+
 // export function sortPartsInSegments(
 // 	parts: DBPart[],
 // 	playlist: Pick<DBRundownPlaylist, 'rundownIdsInOrder'>,
 // 	segments: Array<Pick<DBSegment, '_id' | 'rundownId' | '_rank'>>
 // ): DBPart[] {
-// 	return sortPartsInSortedSegments(parts, sortSegmentsInRundowns(segments, playlist))
+// 	return sort_parts_in_sorted_segments(parts, sort_segments_in_rundowns(segments, playlist))
 // }
-// export function sortPartsInSortedSegments<P extends Pick<DBPart, '_id' | 'segmentId' | '_rank'>>(
-// 	parts: P[],
-// 	sortedSegments: Array<Pick<DBSegment, '_id'>>
-// ): P[] {
-// 	const segmentRanks = new Map<SegmentId, number>()
-// 	for (let i = 0; i < sortedSegments.length; i++) {
-// 		segmentRanks.set(sortedSegments[i]._id, i)
-// 	}
+pub fn sort_parts_in_sorted_segments(
+    mut parts: Vec<Part>,
+    sorted_segments: &Vec<Segment>,
+) -> Vec<Part> {
+    let segment_rank_lookup = sorted_segments
+        .iter()
+        .enumerate()
+        .map(|(i, seg)| (seg.id.clone(), i))
+        .collect::<HashMap<_, _>>();
 
-// 	return parts.sort((a, b) => {
-// 		if (a.segmentId === b.segmentId) {
-// 			return a._rank - b._rank
-// 		} else {
-// 			const segA = segmentRanks.get(a.segmentId) ?? Number.POSITIVE_INFINITY
-// 			const segB = segmentRanks.get(b.segmentId) ?? Number.POSITIVE_INFINITY
-// 			return segA - segB
-// 		}
-// 	})
-// }
+    parts.sort_by(|a, b| {
+        if a.segment_id == b.segment_id {
+            a.rank.cmp(&b.rank)
+        } else {
+            let seg_a = segment_rank_lookup
+                .get(&a.segment_id)
+                .unwrap_or(&usize::MAX);
+            let seg_b = segment_rank_lookup
+                .get(&b.segment_id)
+                .unwrap_or(&usize::MAX);
+            seg_a.cmp(seg_b)
+        }
+    });
+
+    parts
+}
 
 /**
  * Sort an array of RundownIds based on a reference list

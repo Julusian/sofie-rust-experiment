@@ -20,7 +20,10 @@ use crate::{
         rundown_playlist::RundownPlaylist,
         segment::Segment,
     },
+    playout::playlist::sort_segments_in_rundowns,
 };
+
+use super::playlist::sort_parts_in_sorted_segments;
 
 #[derive(Clone)]
 pub struct FakeDoc {
@@ -115,29 +118,9 @@ fn get_rundowns_segments_and_parts_from_caches(
     segments_cache: &DbCacheWriteCollectionImpl<Segment, SegmentId>,
     rundown_ids_in_order: &Vec<RundownId>,
 ) -> SegmentsAndParts {
-    todo!()
-    // const segments = sortSegmentsInRundowns(
-    // 	segmentsCache.findAll(null, {
-    // 		sort: {
-    // 			rundownId: 1,
-    // 			_rank: 1,
-    // 		},
-    // 	}),
-    // 	playlist
-    // )
+    let segments = sort_segments_in_rundowns(segments_cache.find_all(), rundown_ids_in_order);
 
-    // const parts = sortPartsInSortedSegments(
-    // 	partsCache.findAll(null, {
-    // 		sort: {
-    // 			rundownId: 1,
-    // 			_rank: 1,
-    // 		},
-    // 	}),
-    // 	segments
-    // )
+    let parts = sort_parts_in_sorted_segments(parts_cache.find_all(), &segments);
 
-    // return {
-    // 	segments: segments,
-    // 	parts: parts,
-    // }
+    SegmentsAndParts { segments, parts }
 }
