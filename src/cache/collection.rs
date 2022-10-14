@@ -30,6 +30,13 @@ pub trait DbCacheReadCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + Partia
     fn find_one<F: Fn(&T) -> bool>(&self, cb: F) -> Option<T>;
 }
 
+pub struct ChangedIds<Id: Clone + PartialEq + Eq + Hash> {
+    added: Vec<Id>,
+    updated: Vec<Id>,
+    removed: Vec<Id>,
+    unchanged: Vec<Id>,
+}
+
 pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>:
     DbCacheReadCollection<T, Id>
 {
@@ -47,6 +54,12 @@ pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + Parti
     fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
 
     fn replace_one(&mut self, doc: T) -> Result<bool, Id>;
+
+    fn save_into<F: Fn(&T) -> bool>(
+        &mut self,
+        filter: F,
+        new_data: Vec<T>,
+    ) -> Result<ChangedIds<Id>, Id>;
 }
 
 pub struct DbCacheWriteCollectionImpl<
@@ -291,5 +304,14 @@ impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheWri
         );
 
         Ok(has_existing)
+    }
+
+    fn save_into<F: Fn(&T) -> bool>(
+        &mut self,
+        filter: F,
+        new_data: Vec<T>,
+    ) -> Result<ChangedIds<Id>, Id> {
+        //
+        todo!();
     }
 }

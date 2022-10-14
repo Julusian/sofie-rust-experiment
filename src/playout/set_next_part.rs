@@ -150,7 +150,7 @@ pub async fn setNextPart(
                             id: id.clone(),
                             take_count: new_take_count,
                             rehearsal: cache.playlist.doc().rehearsal,
-                            // playlistActivationId: cache.Playlist.doc.activationId,
+                            playlist_activation_id: activation_id,
                             rundown_id: part.rundown_id.clone(),
                             segment_id: part.segment_id.clone(),
                             segment_playout_id,
@@ -193,7 +193,7 @@ pub async fn setNextPart(
                         &possible_pieces,
                         &id,
                         false,
-                    );
+                    )?;
                     for piece_instance in new_piece_instances {
                         cache
                             .piece_instances

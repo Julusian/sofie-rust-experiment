@@ -22,6 +22,7 @@ use crate::{
             PartInstanceId, PieceInstanceId, PieceInstanceInfiniteId, RundownPlaylistActivationId,
         },
         part_instance::PartInstance,
+        piece::PieceEnableStart,
         piece_instance::{PieceInstance, PieceInstanceInfinite},
         rundown::Rundown,
         rundown_playlist::{progress_hold_state, RundownHoldState},
@@ -582,6 +583,7 @@ fn start_hold(
                         infinite_instance_index: 0,
                         infinite_piece_id: instance.piece.id.clone(),
                         from_previous_part: false,
+                        from_previous_playhead: false,
                         from_hold: false,
                     });
 
@@ -591,29 +593,33 @@ fn start_hold(
 
             // make the extension
             let mut new_instance_piece = instance.piece.clone();
-            // new_instance_piece.enable = { start: 0};
+            new_instance_piece.enable.start = PieceEnableStart::Offset(Duration::zero());
             new_instance_piece.extend_on_hold = false;
 
             let new_instance = PieceInstance {
                 id: PieceInstanceId::new_from(format!("{}_hold", &instance.id.unprotect())),
-                // playlistActivationId: activationId,
-                // rundownId: instance.rundownId,
+                playlist_activation_id: activation_id.clone(),
+                rundown_id: instance.rundown_id,
                 part_instance_id: hold_to_part_instance.id.clone(),
-                // dynamicallyInserted: getCurrentTime(),
+                dynamically_inserted: Some(Utc::now()),
                 piece: new_instance_piece,
                 reset: false,
                 disabled: false,
-                dynamically_inserted: None,
+                adlib_source_id: None,
+                user_duration: None,
                 infinite: Some(PieceInstanceInfinite {
                     infinite_instance_id: infinite_instance_id,
                     infinite_instance_index: 1,
                     infinite_piece_id: instance.piece.id.clone(),
                     from_previous_part: true,
+                    from_previous_playhead: false,
                     from_hold: true,
                 }),
                 // Preserve the timings from the playing instance
-                // reportedStartedPlayback: instance.reportedStartedPlayback,
-                // reportedStoppedPlayback: instance.reportedStoppedPlayback,
+                reported_started_playback: instance.reported_started_playback,
+                reported_stopped_playback: instance.reported_stopped_playback,
+                planned_started_playback: None,
+                planned_stopped_playback: None,
             };
 
             // TODO

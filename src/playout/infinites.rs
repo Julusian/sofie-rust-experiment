@@ -5,8 +5,15 @@ use itertools::Itertools;
 
 use crate::data_model::{
     extra::get_piece_control_object_id,
-    piece::{PieceEnableStart, PieceLifespan},
-    piece_instance::PieceInstance,
+    ids::{
+        PartId, PartInstanceId, PieceInstanceId, RundownId, RundownPlaylistActivationId, SegmentId,
+        ShowStyleBaseId,
+    },
+    part::Part,
+    part_instance::PartInstance,
+    piece::{Piece, PieceEnableStart, PieceLifespan},
+    piece_instance::{rewrapPieceToInstance, PieceInstance},
+    rundown::Rundown,
     show_style_base::SourceLayers,
 };
 
@@ -81,176 +88,302 @@ use crate::data_model::{
 // }
 
 pub fn getPlayheadTrackingInfinitesForPart(
-    playlistActivationId: String,
-    partsBeforeThisInSegmentSet: &HashSet<String>,
-    segmentsBeforeThisInRundownSet: &HashSet<String>,
-    // rundownsBeforeThisInPlaylist: RundownId[],
-    // rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
-    // currentPartInstance: DBPartInstance,
-    // currentPartPieceInstances: PieceInstance[],
-    // rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
-    // part: DBPart,
-    // newInstanceId: PartInstanceId,
-    // nextPartIsAfterCurrentPart: boolean,
-    // isTemporary: boolean
+    playlistActivationId: &RundownPlaylistActivationId,
+    partsBeforeThisInSegmentSet: &HashSet<PartId>,
+    segmentsBeforeThisInRundownSet: &HashSet<SegmentId>,
+    rundownsBeforeThisInPlaylist: &Vec<RundownId>,
+    rundownsToShowstyles: &HashMap<RundownId, ShowStyleBaseId>,
+    currentPartInstance: &PartInstance,
+    currentPartPieceInstances: &[PieceInstance],
+    rundown: &Rundown,
+    part: &Part,
+    newInstanceId: &PartInstanceId,
+    nextPartIsAfterCurrentPart: bool,
+    isTemporary: bool,
 ) -> Vec<PieceInstance> {
-    // 	const canContinueAdlibOnEnds = nextPartIsAfterCurrentPart
-    // 	interface InfinitePieceSet {
-    // 		[PieceLifespan.OutOnShowStyleEnd]?: PieceInstance
-    // 		[PieceLifespan.OutOnRundownEnd]?: PieceInstance
-    // 		[PieceLifespan.OutOnSegmentEnd]?: PieceInstance
-    // 		onChange?: PieceInstance
-    // 	}
-    // 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
+    let canContinueAdlibOnEnds = nextPartIsAfterCurrentPart;
 
-    // 	const canContinueShowStyleEndInfinites = continueShowStyleEndInfinites(
-    // 		rundownsBeforeThisInPlaylist,
-    // 		rundownsToShowstyles,
-    // 		currentPartInstance.rundownId,
-    // 		rundown
-    // 	)
+    let mut result = Vec::new();
 
-    // 	const groupedPlayingPieceInstances = _.groupBy(currentPartPieceInstances, (p) => p.piece.sourceLayerId)
-    // 	for (const [sourceLayerId, pieceInstances] of Object.entries(groupedPlayingPieceInstances)) {
-    // 		// Find the ones that starts last. Note: any piece will stop an onChange
-    // 		const lastPiecesByStart = _.groupBy(pieceInstances, (p) => p.piece.enable.start)
-    // 		let lastPieceInstances = lastPiecesByStart['now'] || []
-    // 		if (lastPieceInstances.length === 0) {
-    // 			const target = max(Object.keys(lastPiecesByStart), (k) => Number(k))
-    // 			if (target !== undefined) {
-    // 				lastPieceInstances = lastPiecesByStart[target] || []
-    // 			}
-    // 		}
+    let canContinueShowStyleEndInfinites = continueShowStyleEndInfinites(
+        rundownsBeforeThisInPlaylist,
+        rundownsToShowstyles,
+        &currentPartInstance.rundown_id,
+        rundown,
+    );
 
-    // 		// Some basic resolving, to figure out which is our candidate
-    // 		let lastPieceInstance: PieceInstance | undefined
-    // 		for (const candidate of lastPieceInstances) {
-    // 			if (lastPieceInstance === undefined || isCandidateBetterToBeContinued(lastPieceInstance, candidate)) {
-    // 				lastPieceInstance = candidate
-    // 			}
-    // 		}
+    let groupedPlayingPieceInstances = {
+        let mut grouped: HashMap<String, Vec<&PieceInstance>> = HashMap::new();
 
-    // 		if (lastPieceInstance && !lastPieceInstance.plannedStoppedPlayback && !lastPieceInstance.userDuration) {
-    // 			// If it is an onChange, then it may want to continue
-    // 			let isUsed = false
-    // 			switch (lastPieceInstance.piece.lifespan) {
-    // 				case PieceLifespan.OutOnSegmentChange:
-    // 					if (currentPartInstance.segmentId === part.segmentId) {
-    // 						// Still in the same segment
-    // 						isUsed = true
-    // 					}
-    // 					break
-    // 				case PieceLifespan.OutOnRundownChange:
-    // 					if (lastPieceInstance.rundownId === part.rundownId) {
-    // 						// Still in the same rundown
-    // 						isUsed = true
-    // 					}
-    // 					break
-    // 			}
+        for piece in currentPartPieceInstances {
+            if let Some(group_vec) = grouped.get_mut(&piece.piece.source_layer_id) {
+                group_vec.push(piece);
+            } else {
+                grouped.insert(piece.piece.source_layer_id.clone(), vec![piece]);
+            }
+        }
 
-    // 			if (isUsed) {
-    // 				const pieceSet = piecesOnSourceLayers.get(sourceLayerId) ?? {}
-    // 				pieceSet.onChange = lastPieceInstance
-    // 				piecesOnSourceLayers.set(sourceLayerId, pieceSet)
-    // 				// This may get pruned later, if somethng else has a start of 0
-    // 			}
-    // 		}
+        grouped
+    };
 
-    // 		// Check if we should persist any adlib onEnd infinites
-    // 		if (canContinueAdlibOnEnds) {
-    // 			const piecesByInfiniteMode = _.groupBy(
-    // 				pieceInstances.filter((p) => p.dynamicallyInserted),
-    // 				(p) => p.piece.lifespan
-    // 			)
-    // 			for (const mode0 of [
-    // 				PieceLifespan.OutOnRundownEnd,
-    // 				PieceLifespan.OutOnSegmentEnd,
-    // 				PieceLifespan.OutOnShowStyleEnd,
-    // 			]) {
-    // 				const mode = mode0 as
-    // 					| PieceLifespan.OutOnRundownEnd
-    // 					| PieceLifespan.OutOnSegmentEnd
-    // 					| PieceLifespan.OutOnShowStyleEnd
-    // 				const pieces = (piecesByInfiniteMode[mode] || []).filter(
-    // 					(p) => p.infinite && (p.infinite.fromPreviousPlayhead || p.dynamicallyInserted)
-    // 				)
-    // 				// This is the piece we may copy across
-    // 				const candidatePiece =
-    // 					pieces.find((p) => p.piece.enable.start === 'now') ?? max(pieces, (p) => p.piece.enable.start)
-    // 				if (candidatePiece && !candidatePiece.plannedStoppedPlayback && !candidatePiece.userDuration) {
-    // 					// Check this infinite is allowed to continue to this part
-    // 					let isValid = false
-    // 					switch (mode) {
-    // 						case PieceLifespan.OutOnSegmentEnd:
-    // 							isValid =
-    // 								currentPartInstance.segmentId === part.segmentId &&
-    // 								partsBeforeThisInSegmentSet.has(candidatePiece.piece.startPartId)
-    // 							break
-    // 						case PieceLifespan.OutOnRundownEnd:
-    // 							isValid =
-    // 								candidatePiece.rundownId === part.rundownId &&
-    // 								(segmentsBeforeThisInRundownSet.has(currentPartInstance.segmentId) ||
-    // 									currentPartInstance.segmentId === part.segmentId)
-    // 							break
-    // 						case PieceLifespan.OutOnShowStyleEnd:
-    // 							isValid = canContinueShowStyleEndInfinites
-    // 					}
+    for (source_layer_id, pieceInstances) in groupedPlayingPieceInstances {
+        // Find the ones that starts last. Note: any piece will stop an onChange
+        let lastPiecesByStart = {
+            let mut grouped: HashMap<PieceEnableStart, Vec<&PieceInstance>> = HashMap::new();
 
-    // 					if (isValid) {
-    // 						const pieceSet = piecesOnSourceLayers.get(sourceLayerId) ?? {}
-    // 						pieceSet[mode] = candidatePiece
-    // 						piecesOnSourceLayers.set(sourceLayerId, pieceSet)
-    // 					}
-    // 				}
-    // 			}
-    // 		}
-    // 	}
+            for piece in &pieceInstances {
+                if let Some(group_vec) = grouped.get_mut(&piece.piece.enable.start) {
+                    group_vec.push(piece);
+                } else {
+                    grouped.insert(piece.piece.enable.start.clone(), vec![piece]);
+                }
+            }
 
-    // 	const rewrapInstance = (p: PieceInstance | undefined): PieceInstance | undefined => {
-    // 		if (p) {
-    // 			const instance = rewrapPieceToInstance(
-    // 				p.piece,
-    // 				playlistActivationId,
-    // 				part.rundownId,
-    // 				newInstanceId,
-    // 				isTemporary
-    // 			)
-    // 			markPieceInstanceAsContinuation(p, instance)
+            grouped
+        };
+        let lastPieceInstances = {
+            let now_entry = lastPiecesByStart.get(&PieceEnableStart::Now);
 
-    // 			if (p.infinite) {
-    // 				// This was copied from before, so we know we can force the time to 0
-    // 				instance.piece = {
-    // 					...instance.piece,
-    // 					enable: {
-    // 						start: 0,
-    // 					},
-    // 				}
-    // 				instance.infinite = {
-    // 					...p.infinite,
-    // 					infiniteInstanceIndex: p.infinite.infiniteInstanceIndex + 1,
-    // 					fromPreviousPart: true,
-    // 					fromPreviousPlayhead: true,
-    // 				}
+            // TODO - this is pretty horrible
 
-    // 				return instance
-    // 			}
-    // 		}
-    // 		return undefined
-    // 	}
+            if let Some(now_entry) = now_entry {
+                now_entry.clone()
+            } else {
+                let mut largest = None;
+                for key in lastPiecesByStart.keys() {
+                    match (largest, key) {
+                        (None, PieceEnableStart::Offset(o)) => largest = Some(o),
+                        (Some(l), PieceEnableStart::Offset(o)) => {
+                            if o > l {
+                                largest = Some(o)
+                            }
+                        }
+                        (Some(_), PieceEnableStart::Now) | (None, PieceEnableStart::Now) => {
+                            // Not useful
+                        }
+                    }
+                }
 
-    // 	return flatten(
-    // 		Array.from(piecesOnSourceLayers.values()).map((ps) => {
-    // 			return _.compact(Object.values(ps).map(rewrapInstance))
-    // 		})
-    // 	)
+                if let Some(largest) = largest {
+                    if let Some(pieces) =
+                        lastPiecesByStart.get(&PieceEnableStart::Offset(largest.clone()))
+                    {
+                        pieces.clone()
+                    } else {
+                        Vec::new()
+                    }
+                } else {
+                    Vec::new()
+                }
+            }
+        };
+
+        // Some basic resolving, to figure out which is our candidate
+        let lastPieceInstance = lastPieceInstances.into_iter().reduce(|best, candidate| {
+            if isCandidateBetterToBeContinued(best, candidate) {
+                candidate
+            } else {
+                best
+            }
+        });
+
+        if let Some(lastPieceInstance) = lastPieceInstance {
+            if lastPieceInstance.planned_stopped_playback.is_none()
+                && lastPieceInstance.user_duration.is_none()
+            {
+                // If it is an onChange, then it may want to continue
+                let is_used = match lastPieceInstance.piece.lifespan {
+                    PieceLifespan::OutOnSegmentChange => {
+                        currentPartInstance.segment_id == part.segment_id
+                    }
+                    PieceLifespan::OutOnRundownChange => {
+                        currentPartInstance.rundown_id == part.rundown_id
+                    }
+                    PieceLifespan::WithinPart
+                    | PieceLifespan::OutOnSegmentEnd
+                    | PieceLifespan::OutOnRundownEnd
+                    | PieceLifespan::OutOnShowStyleEnd => false,
+                };
+
+                if is_used {
+                    if let Some(piece) = rewrapPlayheadTrackingPiece(
+                        playlistActivationId,
+                        part,
+                        newInstanceId,
+                        lastPieceInstance,
+                        isTemporary,
+                    ) {
+                        result.push(piece);
+                    }
+                    // This may get pruned later, if somethng else has a start of 0
+                }
+            }
+        }
+
+        // Check if we should persist any adlib onEnd infinites
+        if canContinueAdlibOnEnds {
+            let piecesByInfiniteMode = {
+                let mut grouped: HashMap<PieceLifespan, Vec<&PieceInstance>> = HashMap::new();
+
+                for piece in &pieceInstances {
+                    if piece.dynamically_inserted.is_some() {
+                        if let Some(group_vec) = grouped.get_mut(&piece.piece.lifespan) {
+                            group_vec.push(piece);
+                        } else {
+                            grouped.insert(piece.piece.lifespan.clone(), vec![piece]);
+                        }
+                    }
+                }
+
+                grouped
+            };
+
+            if let Some(candidatePiece) =
+                getCandidateForMode(&piecesByInfiniteMode, &PieceLifespan::OutOnRundownEnd)
+            {
+                if candidatePiece.rundown_id == part.rundown_id
+                    && (segmentsBeforeThisInRundownSet.contains(&currentPartInstance.segment_id)
+                        || currentPartInstance.segment_id == part.segment_id)
+                {
+                    if let Some(piece) = rewrapPlayheadTrackingPiece(
+                        playlistActivationId,
+                        part,
+                        newInstanceId,
+                        candidatePiece,
+                        isTemporary,
+                    ) {
+                        result.push(piece);
+                    }
+                }
+            }
+
+            if let Some(candidatePiece) =
+                getCandidateForMode(&piecesByInfiniteMode, &PieceLifespan::OutOnSegmentEnd)
+            {
+                if currentPartInstance.segment_id == part.segment_id
+                    && partsBeforeThisInSegmentSet.contains(&candidatePiece.piece.start_part_id)
+                {
+                    if let Some(piece) = rewrapPlayheadTrackingPiece(
+                        playlistActivationId,
+                        part,
+                        newInstanceId,
+                        candidatePiece,
+                        isTemporary,
+                    ) {
+                        result.push(piece);
+                    }
+                }
+            }
+
+            if let Some(candidatePiece) =
+                getCandidateForMode(&piecesByInfiniteMode, &PieceLifespan::OutOnShowStyleEnd)
+            {
+                if canContinueShowStyleEndInfinites {
+                    if let Some(piece) = rewrapPlayheadTrackingPiece(
+                        playlistActivationId,
+                        part,
+                        newInstanceId,
+                        candidatePiece,
+                        isTemporary,
+                    ) {
+                        result.push(piece);
+                    }
+                }
+            }
+        }
+    }
+
+    result
 }
 
-// function markPieceInstanceAsContinuation(previousInstance: PieceInstance, instance: PieceInstance) {
-// 	instance._id = protectString(`${instance._id}_continue`)
-// 	instance.dynamicallyInserted = previousInstance.dynamicallyInserted
-// 	instance.adLibSourceId = previousInstance.adLibSourceId
-// 	instance.reportedStartedPlayback = previousInstance.reportedStartedPlayback
-// }
+fn rewrapPlayheadTrackingPiece(
+    playlist_activation_id: &RundownPlaylistActivationId,
+    part: &Part,
+    newInstanceId: &PartInstanceId,
+    input: &PieceInstance,
+    is_temporary: bool,
+) -> Option<PieceInstance> {
+    if let Some(input_infinite) = &input.infinite {
+        let mut instance = rewrapPieceToInstance(
+            input.piece.clone(),
+            playlist_activation_id.clone(),
+            part.rundown_id.clone(),
+            newInstanceId.clone(),
+            is_temporary,
+        );
+
+        markPieceInstanceAsContinuation(input, &mut instance);
+
+        // This was copied from before, so we know we can force the time to 0
+        instance.piece.enable.start = PieceEnableStart::Offset(Duration::zero());
+        instance.infinite = {
+            let mut inf = input_infinite.clone();
+
+            inf.infinite_instance_index = input_infinite.infinite_instance_index + 1;
+            inf.from_previous_part = true;
+            inf.from_previous_playhead = true;
+
+            Some(inf)
+        };
+
+        Some(instance)
+    } else {
+        None
+    }
+}
+
+fn getCandidateForMode<'a>(
+    piecesByInfiniteMode: &'a HashMap<PieceLifespan, Vec<&PieceInstance>>,
+    mode: &PieceLifespan,
+) -> Option<&'a PieceInstance> {
+    let pieces = piecesByInfiniteMode.get(mode).map_or(Vec::new(), |pieces| {
+        pieces
+            .iter()
+            .filter(|piece| {
+                if let Some(inf) = &piece.infinite {
+                    inf.from_previous_playhead || piece.dynamically_inserted.is_some()
+                } else {
+                    false
+                }
+            })
+            .collect_vec()
+    });
+    // This is the piece we may copy across
+    let candidatePiece = pieces.iter().reduce(|best, new| {
+        match (&best.piece.enable.start, &new.piece.enable.start) {
+            (PieceEnableStart::Now, PieceEnableStart::Now) => best,
+            (PieceEnableStart::Offset(_), PieceEnableStart::Now) => new,
+            (PieceEnableStart::Now, PieceEnableStart::Offset(_)) => best,
+            (PieceEnableStart::Offset(best_offset), PieceEnableStart::Offset(new_offset)) => {
+                // TODO - by id?
+                if best_offset >= new_offset {
+                    best
+                } else {
+                    new
+                }
+            }
+        }
+    });
+
+    if let Some(candidatePiece) = candidatePiece {
+        if candidatePiece.planned_stopped_playback.is_none()
+            && candidatePiece.user_duration.is_none()
+        {
+            Some(candidatePiece)
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn markPieceInstanceAsContinuation(previousInstance: &PieceInstance, instance: &mut PieceInstance) {
+    instance.id = PieceInstanceId::new_from(format!("{}_continue", instance.id.unprotect()));
+    instance.dynamically_inserted = previousInstance.dynamically_inserted;
+    instance.adlib_source_id = previousInstance.adlib_source_id.clone();
+    instance.reported_started_playback = previousInstance.reported_started_playback;
+}
 
 // export function isPiecePotentiallyActiveInPart(
 // 	previousPartInstance: DBPartInstance | undefined,
@@ -324,155 +457,156 @@ pub fn getPlayheadTrackingInfinitesForPart(
 // 	}
 // }
 
-// export function getPieceInstancesForPart(
-// 	playlistActivationId: RundownPlaylistActivationId,
-// 	playingPartInstance: DBPartInstance | undefined,
-// 	playingPieceInstances: PieceInstance[] | undefined,
-// 	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
-// 	part: DBPart,
-// 	partsBeforeThisInSegmentSet: Set<PartId>,
-// 	segmentsBeforeThisInRundownSet: Set<SegmentId>,
-// 	rundownsBeforeThisInPlaylist: RundownId[],
-// 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
-// 	possiblePieces: Piece[],
-// 	orderedPartIds: PartId[],
-// 	newInstanceId: PartInstanceId,
-// 	nextPartIsAfterCurrentPart: boolean,
-// 	isTemporary: boolean
-// ): PieceInstance[] {
-// 	const doesPieceAStartBeforePieceB = (pieceA: PieceInstancePiece, pieceB: PieceInstancePiece): boolean => {
-// 		if (pieceA.startPartId === pieceB.startPartId) {
-// 			return pieceA.enable.start < pieceB.enable.start
-// 		}
-// 		const pieceAIndex = orderedPartIds.indexOf(pieceA.startPartId)
-// 		const pieceBIndex = orderedPartIds.indexOf(pieceB.startPartId)
+pub fn getPieceInstancesForPart2(
+    playlistActivationId: RundownPlaylistActivationId,
+    playingPartInstance: Option<&PartInstance>,
+    playingPieceInstances: &[PieceInstance], //| undefined,
+    rundown: &Rundown,
+    part: &Part,
+    partsBeforeThisInSegmentSet: &HashSet<PartId>,
+    segmentsBeforeThisInRundownSet: &HashSet<SegmentId>,
+    rundownsBeforeThisInPlaylist: &[RundownId],
+    rundownsToShowstyles: &HashMap<RundownId, ShowStyleBaseId>,
+    possiblePieces: &[Piece],
+    orderedPartIds: &[PartId],
+    newInstanceId: PartInstanceId,
+    nextPartIsAfterCurrentPart: bool,
+    isTemporary: bool,
+) -> Vec<PieceInstance> {
+    todo!()
+    // 	const doesPieceAStartBeforePieceB = (pieceA: PieceInstancePiece, pieceB: PieceInstancePiece): boolean => {
+    // 		if (pieceA.startPartId === pieceB.startPartId) {
+    // 			return pieceA.enable.start < pieceB.enable.start
+    // 		}
+    // 		const pieceAIndex = orderedPartIds.indexOf(pieceA.startPartId)
+    // 		const pieceBIndex = orderedPartIds.indexOf(pieceB.startPartId)
 
-// 		if (pieceAIndex === -1) {
-// 			return false
-// 		} else if (pieceBIndex === -1) {
-// 			return true
-// 		} else if (pieceAIndex < pieceBIndex) {
-// 			return true
-// 		} else {
-// 			return false
-// 		}
-// 	}
+    // 		if (pieceAIndex === -1) {
+    // 			return false
+    // 		} else if (pieceBIndex === -1) {
+    // 			return true
+    // 		} else if (pieceAIndex < pieceBIndex) {
+    // 			return true
+    // 		} else {
+    // 			return false
+    // 		}
+    // 	}
 
-// 	interface InfinitePieceSet {
-// 		[PieceLifespan.OutOnShowStyleEnd]?: Piece
-// 		[PieceLifespan.OutOnRundownEnd]?: Piece
-// 		[PieceLifespan.OutOnSegmentEnd]?: Piece
-// 		// onChange?: PieceInstance
-// 	}
-// 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
+    // 	interface InfinitePieceSet {
+    // 		[PieceLifespan.OutOnShowStyleEnd]?: Piece
+    // 		[PieceLifespan.OutOnRundownEnd]?: Piece
+    // 		[PieceLifespan.OutOnSegmentEnd]?: Piece
+    // 		// onChange?: PieceInstance
+    // 	}
+    // 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
 
-// 	// Filter down to the last starting onEnd infinite per layer
-// 	for (const candidatePiece of possiblePieces) {
-// 		if (
-// 			candidatePiece.startPartId !== part._id &&
-// 			(candidatePiece.lifespan === PieceLifespan.OutOnShowStyleEnd ||
-// 				candidatePiece.lifespan === PieceLifespan.OutOnRundownEnd ||
-// 				candidatePiece.lifespan === PieceLifespan.OutOnSegmentEnd)
-// 		) {
-// 			const useIt = isPiecePotentiallyActiveInPart(
-// 				playingPartInstance,
-// 				partsBeforeThisInSegmentSet,
-// 				segmentsBeforeThisInRundownSet,
-// 				rundownsBeforeThisInPlaylist,
-// 				rundownsToShowstyles,
-// 				rundown,
-// 				part,
-// 				candidatePiece
-// 			)
+    // 	// Filter down to the last starting onEnd infinite per layer
+    // 	for (const candidatePiece of possiblePieces) {
+    // 		if (
+    // 			candidatePiece.startPartId !== part._id &&
+    // 			(candidatePiece.lifespan === PieceLifespan.OutOnShowStyleEnd ||
+    // 				candidatePiece.lifespan === PieceLifespan.OutOnRundownEnd ||
+    // 				candidatePiece.lifespan === PieceLifespan.OutOnSegmentEnd)
+    // 		) {
+    // 			const useIt = isPiecePotentiallyActiveInPart(
+    // 				playingPartInstance,
+    // 				partsBeforeThisInSegmentSet,
+    // 				segmentsBeforeThisInRundownSet,
+    // 				rundownsBeforeThisInPlaylist,
+    // 				rundownsToShowstyles,
+    // 				rundown,
+    // 				part,
+    // 				candidatePiece
+    // 			)
 
-// 			if (useIt) {
-// 				const pieceSet = piecesOnSourceLayers.get(candidatePiece.sourceLayerId) ?? {}
-// 				const existingPiece = pieceSet[candidatePiece.lifespan]
-// 				if (!existingPiece || doesPieceAStartBeforePieceB(existingPiece, candidatePiece)) {
-// 					pieceSet[candidatePiece.lifespan] = candidatePiece
-// 					piecesOnSourceLayers.set(candidatePiece.sourceLayerId, pieceSet)
-// 				}
-// 			}
-// 		}
-// 	}
+    // 			if (useIt) {
+    // 				const pieceSet = piecesOnSourceLayers.get(candidatePiece.sourceLayerId) ?? {}
+    // 				const existingPiece = pieceSet[candidatePiece.lifespan]
+    // 				if (!existingPiece || doesPieceAStartBeforePieceB(existingPiece, candidatePiece)) {
+    // 					pieceSet[candidatePiece.lifespan] = candidatePiece
+    // 					piecesOnSourceLayers.set(candidatePiece.sourceLayerId, pieceSet)
+    // 				}
+    // 			}
+    // 		}
+    // 	}
 
-// 	// OnChange infinites take priority over onEnd, as they travel with the playhead
-// 	const infinitesFromPrevious = playingPartInstance
-// 		? getPlayheadTrackingInfinitesForPart(
-// 				playlistActivationId,
-// 				partsBeforeThisInSegmentSet,
-// 				segmentsBeforeThisInRundownSet,
-// 				rundownsBeforeThisInPlaylist,
-// 				rundownsToShowstyles,
-// 				playingPartInstance,
-// 				playingPieceInstances || [],
-// 				rundown,
-// 				part,
-// 				newInstanceId,
-// 				nextPartIsAfterCurrentPart,
-// 				isTemporary
-// 		  )
-// 		: []
+    // 	// OnChange infinites take priority over onEnd, as they travel with the playhead
+    // 	const infinitesFromPrevious = playingPartInstance
+    // 		? getPlayheadTrackingInfinitesForPart(
+    // 				playlistActivationId,
+    // 				partsBeforeThisInSegmentSet,
+    // 				segmentsBeforeThisInRundownSet,
+    // 				rundownsBeforeThisInPlaylist,
+    // 				rundownsToShowstyles,
+    // 				playingPartInstance,
+    // 				playingPieceInstances || [],
+    // 				rundown,
+    // 				part,
+    // 				newInstanceId,
+    // 				nextPartIsAfterCurrentPart,
+    // 				isTemporary
+    // 		  )
+    // 		: []
 
-// 	// Compile the resulting list
+    // 	// Compile the resulting list
 
-// 	const playingPieceInstancesMap = normalizeArrayToMapFunc(
-// 		playingPieceInstances ?? [],
-// 		(p) => p.infinite?.infinitePieceId
-// 	)
+    // 	const playingPieceInstancesMap = normalizeArrayToMapFunc(
+    // 		playingPieceInstances ?? [],
+    // 		(p) => p.infinite?.infinitePieceId
+    // 	)
 
-// 	const wrapPiece = (p: PieceInstancePiece) => {
-// 		const instance = rewrapPieceToInstance(p, playlistActivationId, part.rundownId, newInstanceId, isTemporary)
+    // 	const wrapPiece = (p: PieceInstancePiece) => {
+    // 		const instance = rewrapPieceToInstance(p, playlistActivationId, part.rundownId, newInstanceId, isTemporary)
 
-// 		if (instance.piece.lifespan !== PieceLifespan.WithinPart) {
-// 			const existingPiece = nextPartIsAfterCurrentPart
-// 				? playingPieceInstancesMap.get(instance.piece._id)
-// 				: undefined
-// 			instance.infinite = {
-// 				infiniteInstanceId: existingPiece?.infinite?.infiniteInstanceId ?? getRandomId(),
-// 				infiniteInstanceIndex: (existingPiece?.infinite?.infiniteInstanceIndex ?? -1) + 1,
-// 				infinitePieceId: instance.piece._id,
-// 				fromPreviousPart: false, // Set below
-// 			}
+    // 		if (instance.piece.lifespan !== PieceLifespan.WithinPart) {
+    // 			const existingPiece = nextPartIsAfterCurrentPart
+    // 				? playingPieceInstancesMap.get(instance.piece._id)
+    // 				: undefined
+    // 			instance.infinite = {
+    // 				infiniteInstanceId: existingPiece?.infinite?.infiniteInstanceId ?? getRandomId(),
+    // 				infiniteInstanceIndex: (existingPiece?.infinite?.infiniteInstanceIndex ?? -1) + 1,
+    // 				infinitePieceId: instance.piece._id,
+    // 				fromPreviousPart: false, // Set below
+    // 			}
 
-// 			instance.infinite.fromPreviousPart = instance.piece.startPartId !== part._id
-// 			if (existingPiece && (instance.piece.startPartId !== part._id || instance.dynamicallyInserted)) {
-// 				// If it doesnt start in this part, then mark it as a continuation
-// 				markPieceInstanceAsContinuation(existingPiece, instance)
-// 			}
+    // 			instance.infinite.fromPreviousPart = instance.piece.startPartId !== part._id
+    // 			if (existingPiece && (instance.piece.startPartId !== part._id || instance.dynamicallyInserted)) {
+    // 				// If it doesnt start in this part, then mark it as a continuation
+    // 				markPieceInstanceAsContinuation(existingPiece, instance)
+    // 			}
 
-// 			if (instance.infinite.fromPreviousPart) {
-// 				// If this is not the start point, it should start at 0
-// 				// Note: this should not be setitng fromPreviousPlayhead, as it is not from the playhead
-// 				instance.piece = {
-// 					...instance.piece,
-// 					enable: {
-// 						start: 0,
-// 					},
-// 				}
-// 			}
-// 		}
+    // 			if (instance.infinite.fromPreviousPart) {
+    // 				// If this is not the start point, it should start at 0
+    // 				// Note: this should not be setitng fromPreviousPlayhead, as it is not from the playhead
+    // 				instance.piece = {
+    // 					...instance.piece,
+    // 					enable: {
+    // 						start: 0,
+    // 					},
+    // 				}
+    // 			}
+    // 		}
 
-// 		return instance
-// 	}
+    // 		return instance
+    // 	}
 
-// 	const normalPieces = possiblePieces.filter((p) => p.startPartId === part._id)
-// 	const result = normalPieces.map(wrapPiece).concat(infinitesFromPrevious)
-// 	for (const pieceSet of Array.from(piecesOnSourceLayers.values())) {
-// 		const onEndPieces = _.compact([
-// 			pieceSet[PieceLifespan.OutOnShowStyleEnd],
-// 			pieceSet[PieceLifespan.OutOnRundownEnd],
-// 			pieceSet[PieceLifespan.OutOnSegmentEnd],
-// 		])
-// 		result.push(...onEndPieces.map(wrapPiece))
+    // 	const normalPieces = possiblePieces.filter((p) => p.startPartId === part._id)
+    // 	const result = normalPieces.map(wrapPiece).concat(infinitesFromPrevious)
+    // 	for (const pieceSet of Array.from(piecesOnSourceLayers.values())) {
+    // 		const onEndPieces = _.compact([
+    // 			pieceSet[PieceLifespan.OutOnShowStyleEnd],
+    // 			pieceSet[PieceLifespan.OutOnRundownEnd],
+    // 			pieceSet[PieceLifespan.OutOnSegmentEnd],
+    // 		])
+    // 		result.push(...onEndPieces.map(wrapPiece))
 
-// 		// if (pieceSet.onChange) {
-// 		// 	result.push(rewrapInstance(pieceSet.onChange))
-// 		// }
-// 	}
+    // 		// if (pieceSet.onChange) {
+    // 		// 	result.push(rewrapInstance(pieceSet.onChange))
+    // 		// }
+    // 	}
 
-// 	return result
-// }
+    // 	return result
+}
 
 #[derive(Clone, PartialEq)]
 pub enum ResolvedEndCap {
@@ -879,21 +1013,24 @@ fn find_piece_instances_on_infinite_layers(
     res
 }
 
-// function continueShowStyleEndInfinites(
-// 	rundownsBeforeThisInPlaylist: RundownId[],
-// 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
-// 	previousRundownId: RundownId,
-// 	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>
-// ): boolean {
-// 	let canContinueShowStyleEndInfinites = true
-// 	if (rundown.showStyleBaseId !== rundownsToShowstyles.get(previousRundownId)) {
-// 		canContinueShowStyleEndInfinites = false
-// 	} else {
-// 		const targetShowStyle = rundown.showStyleBaseId
-// 		canContinueShowStyleEndInfinites = rundownsBeforeThisInPlaylist
-// 			.slice(rundownsBeforeThisInPlaylist.indexOf(previousRundownId))
-// 			.every((r) => rundownsToShowstyles.get(r) === targetShowStyle)
-// 	}
+fn continueShowStyleEndInfinites(
+    rundowns_before_this_in_playlist: &[RundownId],
+    rundowns_to_showstyles: &HashMap<RundownId, ShowStyleBaseId>,
+    previous_rundown_id: &RundownId,
+    rundown: &Rundown,
+) -> bool {
+    if Some(&rundown.show_style_base_id) != rundowns_to_showstyles.get(previous_rundown_id) {
+        false
+    } else {
+        let target_show_style = &rundown.show_style_base_id;
+        let from_index = rundowns_before_this_in_playlist
+            .iter()
+            .position(|rd| rd == previous_rundown_id)
+            .unwrap_or(0);
 
-// 	return canContinueShowStyleEndInfinites
-// }
+        rundowns_before_this_in_playlist
+            .iter()
+            .skip(from_index)
+            .all(|rd| rundowns_to_showstyles.get(rd) == Some(target_show_style))
+    }
+}

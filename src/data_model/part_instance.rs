@@ -3,7 +3,7 @@ use chrono::{DateTime, Duration, Utc};
 use crate::cache::doc::DocWithId;
 
 use super::{
-    ids::{PartInstanceId, RundownId, SegmentId, SegmentPlayoutId},
+    ids::{PartInstanceId, RundownId, RundownPlaylistActivationId, SegmentId, SegmentPlayoutId},
     part::Part,
 };
 
@@ -46,6 +46,7 @@ pub struct PartInstance {
     pub rundown_id: RundownId,
     pub segment_id: SegmentId,
 
+    pub playlist_activation_id: RundownPlaylistActivationId,
     pub segment_playout_id: SegmentPlayoutId,
 
     pub part: Part,

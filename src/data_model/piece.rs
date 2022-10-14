@@ -2,7 +2,10 @@ use chrono::Duration;
 
 use crate::cache::doc::DocWithId;
 
-use super::ids::PieceId;
+use super::{
+    ids::{PartId, PieceId, RundownId},
+    segment::Segment,
+};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PieceEnableStart {
@@ -17,7 +20,7 @@ pub struct PieceEnable {
     pub duration: Option<Duration>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PieceLifespan {
     /** The Piece will only exist in it's designated Part. As soon as the playhead leaves the Part, the Piece will stop */
     WithinPart, // = 'part-only',
@@ -48,6 +51,10 @@ pub enum IBlueprintPieceType {
 #[derive(Clone)]
 pub struct Piece {
     pub id: PieceId,
+
+    pub start_part_id: PartId,
+    pub start_segment_id: Segment,
+    pub start_rundown_id: RundownId,
 
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
