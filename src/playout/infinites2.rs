@@ -1,4 +1,38 @@
-// /** When we crop a piece, set the piece as "it has definitely ended" this far into the future. */
+use std::collections::HashSet;
+
+use chrono::{Duration, Utc};
+use futures::{future::LocalBoxFuture, join};
+use itertools::Itertools;
+
+use crate::{
+    cache::{
+        collection::{DbCacheReadCollection, DbCacheWriteCollection},
+        object::DbCacheReadObject,
+    },
+    context::{context::JobContext, direct_collections::MongoReadOnlyCollection},
+    data_model::{
+        ids::{PartId, PartInstanceId, RundownId, SegmentId},
+        part::Part,
+        part_instance::{PartInstance, PartInstanceOrphaned},
+        piece::Piece,
+        piece_instance::PieceInstance,
+        rundown::Rundown,
+        rundown_playlist::RundownPlaylist,
+        segment::Segment,
+    },
+    ingest::cache::IngestCache,
+};
+
+use super::{
+    cache::{FakeDoc, PlayoutCache},
+    infinites::{
+        buildPastInfinitePiecesForThisPartQuery, getPieceInstancesForPart2,
+        getPlayheadTrackingInfinitesForPart, processAndPrunePieceInstanceTimings,
+    },
+    playlist::sortRundownIDsInPlaylist,
+};
+
+/** When we crop a piece, set the piece as "it has definitely ended" this far into the future. */
 // export const DEFINITELY_ENDED_FUTURE_DURATION = 1 * 1000
 
 /**
@@ -109,99 +143,112 @@ fn getIdsBeforeThisPart(
     }
 }
 
-use std::collections::HashSet;
-
-use chrono::{Duration, Utc};
-use itertools::Itertools;
-
-use crate::{
-    cache::{
-        collection::{DbCacheReadCollection, DbCacheWriteCollection},
-        object::DbCacheReadObject,
-    },
-    data_model::{
-        ids::{PartId, PartInstanceId, RundownId, SegmentId},
-        part::Part,
-        part_instance::{PartInstance, PartInstanceOrphaned},
-        piece::Piece,
-        piece_instance::PieceInstance,
-        rundown::Rundown,
-        rundown_playlist::RundownPlaylist,
-        segment::Segment,
-    },
-};
-
-use super::{
-    cache::{FakeDoc, PlayoutCache},
-    context::JobContext,
-    infinites::{
-        getPieceInstancesForPart2, getPlayheadTrackingInfinitesForPart,
-        processAndPrunePieceInstanceTimings,
-    },
-    playlist::sortRundownIDsInPlaylist,
-};
-
 pub async fn fetchPiecesThatMayBeActiveForPart(
     context: &JobContext,
     cache: &PlayoutCache,
-    unsavedIngestCache: Option<FakeDoc>, // Omit<ReadOnlyCache<CacheForIngest>, 'Rundown'> | undefined,
+    unsaved_ingest_cache: Option<&IngestCache>,
     part: &Part,
 ) -> Result<Vec<Piece>, String> {
-    todo!()
-    // 	const span = context.startSpan('fetchPiecesThatMayBeActiveForPart')
+    let unsaved_ingest_cache = unsaved_ingest_cache.and_then(|cache| {
+        if cache.rundown.doc_id() == &part.rundown_id {
+            Some(cache)
+        } else {
+            None
+        }
+    });
 
-    // 	const piecePromises: Array<Promise<Array<Piece>> | Array<Piece>> = []
+    // Find all the pieces starting in the part
+    let pieces_for_part: LocalBoxFuture<Result<Vec<Piece>, String>> =
+        if let Some(unsaved_ingest_cache) = unsaved_ingest_cache {
+            Box::pin(futures::future::ready(Ok(unsaved_ingest_cache
+                .pieces
+                .find_some(|p| p.start_part_id == part.id))))
+        } else {
+            // 	const thisPiecesQuery = { startPartId: part._id }
+            context
+                .direct_collections()
+                .pieces
+                .find_fetch("".to_string(), None)
+        };
 
-    // 	// Find all the pieces starting in the part
-    // 	const thisPiecesQuery = buildPiecesStartingInThisPartQuery(part)
-    // 	piecePromises.push(
-    // 		unsavedIngestCache?.RundownId === part.rundownId
-    // 			? unsavedIngestCache.Pieces.findAll((p) => mongoWhere(p, thisPiecesQuery))
-    // 			: context.directCollections.Pieces.findFetch(thisPiecesQuery)
-    // 	)
+    // Figure out the ids of everything else we will have to search through
+    let ids_before_part = getIdsBeforeThisPart(context, cache, part);
 
-    // 	// Figure out the ids of everything else we will have to search through
-    // 	const { partsBeforeThisInSegment, segmentsBeforeThisInRundown, rundownsBeforeThisInPlaylist } =
-    // 		getIdsBeforeThisPart(context, cache, part)
+    if let Some(unsaved_ingest_cache) = unsaved_ingest_cache {
+        // Find pieces for the current rundown
+        let thisRundownPieceQuery = buildPastInfinitePiecesForThisPartQuery(
+            part,
+            &ids_before_part.parts_before_this_in_segment,
+            &ids_before_part.segments_before_this_in_rundown,
+            &Vec::new(), // other rundowns don't exist in the ingestCache
+        );
+        let mut this_rundown_pieces: Vec<Piece> =
+            if let Some(this_rundown_piece_query) = thisRundownPieceQuery {
+                unsaved_ingest_cache.pieces.find_some(|p| todo!())
+            } else {
+                Vec::new()
+            };
 
-    // 	if (unsavedIngestCache?.RundownId === part.rundownId) {
-    // 		// Find pieces for the current rundown
-    // 		const thisRundownPieceQuery = buildPastInfinitePiecesForThisPartQuery(
-    // 			part,
-    // 			partsBeforeThisInSegment,
-    // 			segmentsBeforeThisInRundown,
-    // 			[] // other rundowns don't exist in the ingestCache
-    // 		)
-    // 		if (thisRundownPieceQuery) {
-    // 			piecePromises.push(unsavedIngestCache.Pieces.findAll((p) => mongoWhere(p, thisRundownPieceQuery)))
-    // 		}
+        // Find pieces for the previous rundowns
+        let previousRundownPieceQuery = buildPastInfinitePiecesForThisPartQuery(
+            part,
+            &Vec::new(), // Only applies to the current rundown
+            &Vec::new(), // Only applies to the current rundown
+            &ids_before_part.rundowns_before_this_in_playlist,
+        );
+        let previous_rundown_pieces: LocalBoxFuture<Result<Vec<Piece>, String>> =
+            if let Some(previous_rundown_piece_query) = previousRundownPieceQuery {
+                context
+                    .direct_collections()
+                    .pieces
+                    .find_fetch(previous_rundown_piece_query, None)
+            } else {
+                Box::pin(futures::future::ready(Ok(Vec::new())))
+            };
 
-    // 		// Find pieces for the previous rundowns
-    // 		const previousRundownPieceQuery = buildPastInfinitePiecesForThisPartQuery(
-    // 			part,
-    // 			[], // Only applies to the current rundown
-    // 			[], // Only applies to the current rundown
-    // 			rundownsBeforeThisInPlaylist
-    // 		)
-    // 		if (previousRundownPieceQuery) {
-    // 			piecePromises.push(context.directCollections.Pieces.findFetch(previousRundownPieceQuery))
-    // 		}
-    // 	} else {
-    // 		// No cache, so we can do a single query to the db for it all
-    // 		const infinitePiecesQuery = buildPastInfinitePiecesForThisPartQuery(
-    // 			part,
-    // 			partsBeforeThisInSegment,
-    // 			segmentsBeforeThisInRundown,
-    // 			rundownsBeforeThisInPlaylist
-    // 		)
-    // 		if (infinitePiecesQuery) {
-    // 			piecePromises.push(context.directCollections.Pieces.findFetch(infinitePiecesQuery))
-    // 		}
-    // 	}
+        let results = join!(pieces_for_part, previous_rundown_pieces);
 
-    // 	const pieces = flatten(await Promise.all(piecePromises))
-    // 	if (span) span.end()
-    // 	return pieces
+        let mut all_pieces = results.0?;
+        let mut previous_rundown_pieces = results.1?;
+
+        if this_rundown_pieces.len() > 0 {
+            all_pieces.append(&mut this_rundown_pieces);
+        }
+        if previous_rundown_pieces.len() > 0 {
+            all_pieces.append(&mut previous_rundown_pieces);
+        }
+
+        Ok(all_pieces)
+    } else {
+        // No cache, so we can do a single query to the db for it all
+        let infinite_pieces_query = buildPastInfinitePiecesForThisPartQuery(
+            part,
+            &ids_before_part.parts_before_this_in_segment,
+            &ids_before_part.segments_before_this_in_rundown,
+            &ids_before_part.rundowns_before_this_in_playlist,
+        );
+
+        let infinite_pieces: LocalBoxFuture<Result<Vec<Piece>, String>> =
+            if let Some(infinite_pieces_query) = infinite_pieces_query {
+                context
+                    .direct_collections()
+                    .pieces
+                    .find_fetch(infinite_pieces_query, None)
+            } else {
+                Box::pin(futures::future::ready(Ok(Vec::new())))
+            };
+
+        let results = join!(pieces_for_part, infinite_pieces);
+
+        let mut all_pieces = results.0?;
+        let mut infinites = results.1?;
+
+        if infinites.len() > 0 {
+            all_pieces.append(&mut infinites);
+        }
+
+        Ok(all_pieces)
+    }
 }
 
 pub async fn syncPlayheadInfinitesForNextPartInstance(

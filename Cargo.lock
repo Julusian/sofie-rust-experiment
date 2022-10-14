@@ -1109,6 +1109,7 @@ dependencies = [
  "itertools",
  "mongodb",
  "protected-id-derive",
+ "serde",
  "uuid 0.8.2",
 ]
 

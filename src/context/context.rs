@@ -3,10 +3,17 @@ use crate::data_model::{
     show_style_base::ShowStyleBase,
 };
 
+use super::direct_collections::DirectCollections;
+
 pub struct JobContext {
     //
+    collections: Box<DirectCollections>,
 }
 impl JobContext {
+    pub fn direct_collections(&self) -> &DirectCollections {
+        &self.collections
+    }
+
     pub async fn get_show_style_compound(
         &self,
         variant_id: &ShowStyleVariantId,

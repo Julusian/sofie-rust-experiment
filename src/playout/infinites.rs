@@ -17,75 +17,73 @@ use crate::data_model::{
     show_style_base::SourceLayers,
 };
 
-// export function buildPiecesStartingInThisPartQuery(part: DBPart): MongoQuery<Piece> {
-// 	return { startPartId: part._id }
-// }
+pub fn buildPastInfinitePiecesForThisPartQuery(
+    part: &Part,
+    partsIdsBeforeThisInSegment: &[PartId],
+    segmentsIdsBeforeThisInRundown: &[SegmentId],
+    rundownIdsBeforeThisInPlaylist: &[RundownId],
+) -> Option<String> {
+    //MongoQuery<Piece> | null {
+    todo!()
+    // 	const fragments = _.compact([
+    // 		partsIdsBeforeThisInSegment.length > 0
+    // 			? {
+    // 					// same segment, and previous part
+    // 					lifespan: {
+    // 						$in: [
+    // 							PieceLifespan.OutOnSegmentEnd,
+    // 							PieceLifespan.OutOnSegmentChange,
+    // 							PieceLifespan.OutOnRundownEnd,
+    // 							PieceLifespan.OutOnRundownChange,
+    // 							PieceLifespan.OutOnShowStyleEnd,
+    // 						],
+    // 					},
+    // 					startRundownId: part.rundownId,
+    // 					startSegmentId: part.segmentId,
+    // 					startPartId: { $in: partsIdsBeforeThisInSegment },
+    // 			  }
+    // 			: undefined,
+    // 		segmentsIdsBeforeThisInRundown.length > 0
+    // 			? {
+    // 					// same rundown, and previous segment
+    // 					lifespan: {
+    // 						$in: [
+    // 							PieceLifespan.OutOnRundownEnd,
+    // 							PieceLifespan.OutOnRundownChange,
+    // 							PieceLifespan.OutOnShowStyleEnd,
+    // 						],
+    // 					},
+    // 					startRundownId: part.rundownId,
+    // 					startSegmentId: { $in: segmentsIdsBeforeThisInRundown },
+    // 			  }
+    // 			: undefined,
+    // 		rundownIdsBeforeThisInPlaylist.length > 0
+    // 			? {
+    // 					// previous rundown
+    // 					lifespan: {
+    // 						$in: [PieceLifespan.OutOnShowStyleEnd],
+    // 					},
+    // 					startRundownId: { $in: rundownIdsBeforeThisInPlaylist },
+    // 			  }
+    // 			: undefined,
+    // 	])
 
-// export function buildPastInfinitePiecesForThisPartQuery(
-// 	part: DBPart,
-// 	partsIdsBeforeThisInSegment: PartId[],
-// 	segmentsIdsBeforeThisInRundown: SegmentId[],
-// 	rundownIdsBeforeThisInPlaylist: RundownId[]
-// ): MongoQuery<Piece> | null {
-// 	const fragments = _.compact([
-// 		partsIdsBeforeThisInSegment.length > 0
-// 			? {
-// 					// same segment, and previous part
-// 					lifespan: {
-// 						$in: [
-// 							PieceLifespan.OutOnSegmentEnd,
-// 							PieceLifespan.OutOnSegmentChange,
-// 							PieceLifespan.OutOnRundownEnd,
-// 							PieceLifespan.OutOnRundownChange,
-// 							PieceLifespan.OutOnShowStyleEnd,
-// 						],
-// 					},
-// 					startRundownId: part.rundownId,
-// 					startSegmentId: part.segmentId,
-// 					startPartId: { $in: partsIdsBeforeThisInSegment },
-// 			  }
-// 			: undefined,
-// 		segmentsIdsBeforeThisInRundown.length > 0
-// 			? {
-// 					// same rundown, and previous segment
-// 					lifespan: {
-// 						$in: [
-// 							PieceLifespan.OutOnRundownEnd,
-// 							PieceLifespan.OutOnRundownChange,
-// 							PieceLifespan.OutOnShowStyleEnd,
-// 						],
-// 					},
-// 					startRundownId: part.rundownId,
-// 					startSegmentId: { $in: segmentsIdsBeforeThisInRundown },
-// 			  }
-// 			: undefined,
-// 		rundownIdsBeforeThisInPlaylist.length > 0
-// 			? {
-// 					// previous rundown
-// 					lifespan: {
-// 						$in: [PieceLifespan.OutOnShowStyleEnd],
-// 					},
-// 					startRundownId: { $in: rundownIdsBeforeThisInPlaylist },
-// 			  }
-// 			: undefined,
-// 	])
-
-// 	if (fragments.length === 0) {
-// 		return null
-// 	} else if (fragments.length === 1) {
-// 		return {
-// 			invalid: { $ne: true },
-// 			startPartId: { $ne: part._id },
-// 			...fragments[0],
-// 		}
-// 	} else {
-// 		return {
-// 			invalid: { $ne: true },
-// 			startPartId: { $ne: part._id },
-// 			$or: fragments,
-// 		}
-// 	}
-// }
+    // 	if (fragments.length === 0) {
+    // 		return null
+    // 	} else if (fragments.length === 1) {
+    // 		return {
+    // 			invalid: { $ne: true },
+    // 			startPartId: { $ne: part._id },
+    // 			...fragments[0],
+    // 		}
+    // 	} else {
+    // 		return {
+    // 			invalid: { $ne: true },
+    // 			startPartId: { $ne: part._id },
+    // 			$or: fragments,
+    // 		}
+    // 	}
+}
 
 pub fn getPlayheadTrackingInfinitesForPart(
     playlistActivationId: &RundownPlaylistActivationId,

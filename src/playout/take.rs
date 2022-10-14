@@ -5,7 +5,6 @@ use sofie_rust_experiment::get_random_id;
 
 use super::{
     cache::PlayoutCache,
-    context::JobContext,
     infinites::processAndPrunePieceInstanceTimings,
     lib::is_too_close_to_autonext,
     select_next_part::select_next_part,
@@ -17,6 +16,7 @@ use crate::{
         collection::{DbCacheReadCollection, DbCacheWriteCollection},
         object::{DbCacheReadObject, DbCacheWriteObject},
     },
+    context::context::JobContext,
     data_model::{
         ids::{
             PartInstanceId, PieceInstanceId, PieceInstanceInfiniteId, RundownPlaylistActivationId,

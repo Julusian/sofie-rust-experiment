@@ -8,6 +8,7 @@ use crate::{
         collection::{DbCacheReadCollection, DbCacheWriteCollection},
         object::{DbCacheReadObject, DbCacheWriteObject},
     },
+    context::context::JobContext,
     data_model::{
         ids::{PartInstanceId, SegmentPlayoutId},
         part_instance::{PartInstance, PartInstanceTimings},
@@ -16,7 +17,6 @@ use crate::{
 
 use super::{
     cache::PlayoutCache,
-    context::JobContext,
     infinites2::{
         fetchPiecesThatMayBeActiveForPart, getPieceInstancesForPart,
         syncPlayheadInfinitesForNextPartInstance,
