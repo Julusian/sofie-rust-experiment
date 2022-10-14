@@ -11,4 +11,7 @@ impl JobContext {
     ) -> Result<ShowStyleBase, String> {
         todo!()
     }
+    pub async fn get_show_style_base(&self, base_id: &str) -> Result<ShowStyleBase, String> {
+        todo!()
+    }
 }

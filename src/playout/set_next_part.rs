@@ -17,7 +17,10 @@ use crate::{
 use super::{
     cache::PlayoutCache,
     context::JobContext,
-    infinites2::{fetchPiecesThatMayBeActiveForPart, getPieceInstancesForPart},
+    infinites2::{
+        fetchPiecesThatMayBeActiveForPart, getPieceInstancesForPart,
+        syncPlayheadInfinitesForNextPartInstance,
+    },
     select_next_part::SelectNextPartResult,
 };
 
@@ -70,8 +73,7 @@ pub async fn setNextPart(
                     })
                     .map_err(|_| format!("Failed to reuse part instance"))?;
 
-                // TODO
-                // await syncPlayheadInfinitesForNextPartInstance(context, cache)
+                syncPlayheadInfinitesForNextPartInstance(context, cache).await?;
 
                 instance.id.clone()
             }
@@ -98,8 +100,7 @@ pub async fn setNextPart(
                         })
                         .map_err(|_| format!("Failed to reuse part instance"))?;
 
-                    // TODO
-                    // await syncPlayheadInfinitesForNextPartInstance(context, cache)
+                    syncPlayheadInfinitesForNextPartInstance(context, cache).await?;
 
                     next_part_instance.id.clone()
                 } else {
@@ -161,6 +162,7 @@ pub async fn setNextPart(
                             block_take_until: None,
                             part_playout_timings: None,
                             reset: false,
+                            orphaned: crate::data_model::part_instance::PartInstanceOrphaned::No,
                         })
                         .map_err(|_| format!("Failed to create part instance"))?;
 
@@ -193,6 +195,7 @@ pub async fn setNextPart(
             }
         };
 
+        // TODO
         // let selected_part_instance_ids = Vec::with_capacity(3);
         // 		const selectedPartInstanceIds = _.compact([
         // 			newInstanceId,
@@ -251,53 +254,59 @@ pub async fn setNextPart(
     }
 
     {
-        // TODO
-        // 		const { currentPartInstance, nextPartInstance } = getSelectedPartInstancesFromCache(cache)
-        // 		// When entering a segment, or moving backwards in a segment, reset any partInstances in that window
-        // 		// In theory the new segment should already be reset, as we do that upon leaving, but it wont be if jumping to earlier in the same segment or maybe if the rundown wasnt reset
-        // 		if (nextPartInstance) {
-        // 			const resetPartInstanceIds = new Set<PartInstanceId>()
-        // 			if (currentPartInstance) {
-        // 				// Always clean the current segment, anything after the current part (except the next part)
-        // 				const trailingInOldSegment = cache.PartInstances.findAll(
-        // 					(p) =>
-        // 						!p.reset &&
-        // 						p._id !== currentPartInstance._id &&
-        // 						p._id !== nextPartInstance._id &&
-        // 						p.segmentId === currentPartInstance.segmentId &&
-        // 						p.part._rank > currentPartInstance.part._rank
-        // 				)
+        let next_part_instance = cache.get_next_part_instance();
+        // When entering a segment, or moving backwards in a segment, reset any partInstances in that window
+        // In theory the new segment should already be reset, as we do that upon leaving, but it wont be if jumping to earlier in the same segment or maybe if the rundown wasnt reset
+        if let Some(nextPartInstance) = next_part_instance {
+            let current_part_instance = cache.get_current_part_instance();
 
-        // 				for (const part of trailingInOldSegment) {
-        // 					resetPartInstanceIds.add(part._id)
-        // 				}
-        // 			}
+            let mut resetPartInstanceIds = HashSet::new();
 
-        // 			if (
-        // 				!currentPartInstance ||
-        // 				nextPartInstance.segmentId !== currentPartInstance.segmentId ||
-        // 				(nextPartInstance.segmentId === currentPartInstance.segmentId &&
-        // 					nextPartInstance.part._rank < currentPartInstance.part._rank)
-        // 			) {
-        // 				// clean the whole segment if new, or jumping backwards
-        // 				const newSegmentParts = cache.PartInstances.findAll(
-        // 					(p) =>
-        // 						!p.reset &&
-        // 						p._id !== nextPartInstance._id &&
-        // 						p._id !== currentPartInstance?._id &&
-        // 						p.segmentId === nextPartInstance.segmentId
-        // 				)
-        // 				for (const part of newSegmentParts) {
-        // 					resetPartInstanceIds.add(part._id)
-        // 				}
-        // 			}
+            if let Some(current_part_instance) = &current_part_instance {
+                // Always clean the current segment, anything after the current part (except the next part)
+                let trailing_in_old_segment = cache.part_instances.find_some(|p| {
+                    !p.reset
+                        && p.id != current_part_instance.id
+                        && p.id != nextPartInstance.id
+                        && p.segment_id == current_part_instance.segment_id
+                        && p.part.rank > current_part_instance.part.rank
+                });
 
-        // 			if (resetPartInstanceIds.size > 0) {
-        // 				resetPartInstancesWithPieceInstances(context, cache, {
-        // 					_id: { $in: Array.from(resetPartInstanceIds) },
-        // 				})
-        // 			}
-        // 		}
+                for part in trailing_in_old_segment {
+                    resetPartInstanceIds.insert(part.id);
+                }
+            }
+
+            let clean_next_segment = if let Some(current_part_instance) = &current_part_instance {
+                nextPartInstance.segment_id != current_part_instance.segment_id
+                    || (nextPartInstance.segment_id == current_part_instance.segment_id
+                        && nextPartInstance.part.rank < current_part_instance.part.rank)
+            } else {
+                true
+            };
+
+            if clean_next_segment {
+                // clean the whole segment if new, or jumping backwards
+
+                let current_part_instance_id = current_part_instance.as_ref().map(|inst| &inst.id);
+                let new_segment_parts = cache.part_instances.find_some(|p| {
+                    !p.reset
+                        && p.id != nextPartInstance.id
+                        && Some(&p.id) != current_part_instance_id
+                        && p.segment_id == nextPartInstance.segment_id
+                });
+                for part in new_segment_parts {
+                    resetPartInstanceIds.insert(part.id);
+                }
+            }
+
+            if resetPartInstanceIds.len() > 0 {
+                // TODO
+                // resetPartInstancesWithPieceInstances(context, cache, {
+                // 	_id: { $in: Array.from(resetPartInstanceIds) },
+                // })
+            }
+        }
     }
 
     // TODO

@@ -15,6 +15,14 @@ pub struct PartInstanceTimings {
     pub play_offset: Option<Duration>,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum PartInstanceOrphaned {
+    No,
+    Deleted,
+    AdlibPart,
+    //  'adlib-part' | 'deleted'
+}
+
 /**
  * Numbers are relative to the start of toPartGroup. Nothing should ever be negative, the pieces of toPartGroup will be delayed to allow for other things to complete.
  * Note: once the part has been taken this should not be recalculated. Doing so may result in the timings shifting if the preroll required for the part is found to have changed
@@ -38,6 +46,7 @@ pub struct PartInstance {
     pub segment_playout_id: String,
 
     pub part: Part,
+    pub orphaned: PartInstanceOrphaned,
 
     pub timings: PartInstanceTimings,
     pub is_taken: bool,
