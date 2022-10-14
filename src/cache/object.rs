@@ -13,6 +13,8 @@ type Result<T> = std::result::Result<T, CacheObjectError>;
 pub trait DbCacheReadObject<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> {
     fn name(&self) -> &str;
 
+    fn doc_id(&self) -> &Id;
+
     fn doc(&self) -> &T;
 }
 
@@ -23,7 +25,7 @@ pub trait DbCacheWriteObject<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq
     fn mark_for_removal(&mut self);
 
     fn discard_changes(&mut self);
-    fn update_database_with_data(&mut self) -> Result<()>; // TODO
+    fn update_database_with_data(&mut self) -> Result<()>;
 
     fn update<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<bool>;
 }
@@ -55,6 +57,10 @@ impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheRea
 {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn doc_id(&self) -> &Id {
+        &self.id
     }
 
     fn doc(&self) -> &T {

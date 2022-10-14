@@ -33,7 +33,6 @@ impl<'a> DocWithId<'a, RundownPlaylistActivationId> for FakeDoc {
 }
 
 pub struct PlayoutCache {
-    pub playlist_id: String,
     pub playlist: DbCacheWriteObjectImpl<RundownPlaylist, RundownPlaylistId>,
 
     // pub playlist_lock: Rc<>

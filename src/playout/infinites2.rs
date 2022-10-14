@@ -71,10 +71,12 @@ fn getIdsBeforeThisPart(
     let segments_before_this_in_rundown = cache
         .segments
         .find_one_by_id(&next_part.segment_id)
-        .map(|currentSegment| {
+        .map(|current_segment| {
             cache
                 .segments
-                .find_some(|s| s.rundown_id == next_part.rundown_id && s.rank < currentSegment.rank)
+                .find_some(|s| {
+                    s.rundown_id == next_part.rundown_id && s.rank < current_segment.rank
+                })
                 .into_iter()
                 .map(|s| s.id)
                 .collect::<Vec<_>>()
@@ -206,57 +208,62 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
     context: &JobContext,
     cache: &mut PlayoutCache,
 ) -> Result<(), String> {
-    let nextPartInstance = cache.get_next_part_instance();
-    let currentPartInstance = cache.get_current_part_instance();
+    let next_part_instance = cache.get_next_part_instance();
+    let current_part_instance = cache.get_current_part_instance();
 
-    match (nextPartInstance, currentPartInstance) {
-        (Some(nextPartInstance), Some(currentPartInstance)) => {
+    match (next_part_instance, current_part_instance) {
+        (Some(next_part_instance), Some(current_part_instance)) => {
             let activation_id = cache.playlist.doc().activation_id.clone().ok_or_else(|| {
-                format!("RundownPlaylist \"{}\" is not active", cache.playlist_id)
+                format!(
+                    "RundownPlaylist \"{}\" is not active",
+                    cache.playlist.doc_id().unprotect()
+                )
             })?;
 
             let rundown = cache
                 .rundowns
-                .find_one_by_id(&currentPartInstance.rundown_id)
+                .find_one_by_id(&current_part_instance.rundown_id)
                 .ok_or_else(|| {
                     format!(
                         "Rundown \"{}\" is not active",
-                        currentPartInstance.rundown_id.unprotect()
+                        current_part_instance.rundown_id.unprotect()
                     )
                 })?;
 
-            let ids_before_next_part = getIdsBeforeThisPart(context, cache, &nextPartInstance.part);
+            let ids_before_next_part =
+                getIdsBeforeThisPart(context, cache, &next_part_instance.part);
 
-            let showStyleBase = context
+            let show_style_base = context
                 .get_show_style_base(&rundown.show_style_base_id)
                 .await?;
 
-            let orderedPartsAndSegments = cache.get_ordered_segments_and_parts();
+            let ordered_parts_and_segments = cache.get_ordered_segments_and_parts();
 
-            let canContinueAdlibOnEnds = canContinueAdlibOnEndInfinites(
+            let can_continue_adlib_on_ends = canContinueAdlibOnEndInfinites(
                 context,
                 cache.playlist.doc(),
-                &orderedPartsAndSegments.segments,
-                Some(&currentPartInstance),
-                &nextPartInstance.part,
+                &ordered_parts_and_segments.segments,
+                Some(&current_part_instance),
+                &next_part_instance.part,
             );
-            let playingPieceInstances = cache
+            let playing_piece_instances = cache
                 .piece_instances
-                .find_some(|p| p.part_instance_id == currentPartInstance.id);
+                .find_some(|p| p.part_instance_id == current_part_instance.id);
 
-            let nowInPart = currentPartInstance
+            let now_in_part = current_part_instance
                 .timings
                 .planned_started_playback
                 .map_or(Duration::zero(), |start| Utc::now() - start);
-            let prunedPieceInstances = processAndPrunePieceInstanceTimings(
-                &showStyleBase.source_layers,
-                &playingPieceInstances,
-                nowInPart,
+            let pruned_piece_instances = processAndPrunePieceInstanceTimings(
+                &show_style_base.source_layers,
+                &playing_piece_instances,
+                now_in_part,
                 false,
                 true,
             );
 
-            let rundownIdsToShowstyleIds = cache.get_show_style_ids_rundown_mapping_from_cache();
+            let rundown_ids_to_showstyle_ids =
+                cache.get_show_style_ids_rundown_mapping_from_cache();
 
             let infinites = getPlayheadTrackingInfinitesForPart(
                 &activation_id,
@@ -271,16 +278,16 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                         .into_iter(),
                 ),
                 &ids_before_next_part.rundowns_before_this_in_playlist,
-                &rundownIdsToShowstyleIds,
-                &currentPartInstance,
-                &prunedPieceInstances
+                &rundown_ids_to_showstyle_ids,
+                &current_part_instance,
+                &pruned_piece_instances
                     .into_iter()
                     .map(|p| p.piece)
                     .collect_vec(),
                 &rundown,
-                &nextPartInstance.part,
-                &nextPartInstance.id,
-                canContinueAdlibOnEnds,
+                &next_part_instance.part,
+                &next_part_instance.id,
+                can_continue_adlib_on_ends,
                 false,
             );
 
@@ -288,14 +295,14 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                 .piece_instances
                 .save_into(
                     |p| {
-                        p.part_instance_id == nextPartInstance.id
+                        p.part_instance_id == next_part_instance.id
                             && p.infinite
                                 .as_ref()
                                 .map_or(false, |inf| inf.from_previous_playhead)
                     },
                     infinites,
                 )
-                .map_err(|e| format!("Failed to save new infinites"))?;
+                .map_err(|_e| format!("Failed to save new infinites"))?;
 
             Ok(())
         }
@@ -315,12 +322,12 @@ pub fn getPieceInstancesForPart(
 ) -> Result<Vec<PieceInstance>, String> {
     let ids_before_next_part = getIdsBeforeThisPart(context, cache, part);
 
-    let activation_id = cache
-        .playlist
-        .doc()
-        .activation_id
-        .clone()
-        .ok_or_else(|| format!("RundownPlaylist \"{}\" is not active", cache.playlist_id))?;
+    let activation_id = cache.playlist.doc().activation_id.clone().ok_or_else(|| {
+        format!(
+            "RundownPlaylist \"{}\" is not active",
+            cache.playlist.doc_id().unprotect()
+        )
+    })?;
 
     let ordered_parts_and_segments = cache.get_ordered_segments_and_parts();
     let playing_piece_instances = playing_part_instance.map_or(Vec::new(), |instance| {

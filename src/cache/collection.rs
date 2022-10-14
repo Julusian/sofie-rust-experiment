@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use super::doc::DocWithId;
@@ -34,7 +34,7 @@ pub struct ChangedIds<Id: Clone + PartialEq + Eq + Hash> {
     added: Vec<Id>,
     updated: Vec<Id>,
     removed: Vec<Id>,
-    unchanged: Vec<Id>,
+    // unchanged: Vec<Id>,
 }
 
 pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>:
@@ -48,7 +48,7 @@ pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + Parti
     fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
 
     fn discard_changes(&mut self);
-    fn update_database_with_data(&mut self) -> Result<(), Id>; // TODO
+    fn update_database_with_data(&mut self) -> Result<(), Id>;
 
     fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &Id, cb: F) -> Result<bool, Id>;
     fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
@@ -311,7 +311,50 @@ impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheWri
         filter: F,
         new_data: Vec<T>,
     ) -> Result<ChangedIds<Id>, Id> {
-        //
-        todo!();
+        self.assert_not_to_be_removed("save_info")?;
+
+        let docs_matching_filter = self.documents.iter().filter_map(|doc| {
+            if let Some(doc) = doc.1 {
+                if filter(&doc.document) {
+                    Some(doc.document.doc_id().clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        });
+
+        let mut result = ChangedIds {
+            added: Vec::new(),
+            updated: Vec::new(),
+            removed: Vec::new(),
+        };
+
+        let mut docs_to_remove: HashSet<Id> = HashSet::from_iter(docs_matching_filter);
+
+        // Insert new docs;
+        for doc in new_data {
+            // Mark it as not to remove
+            docs_to_remove.remove(doc.doc_id());
+
+            let id = doc.doc_id().clone();
+
+            let was_update = self.replace_one(doc)?;
+            if was_update {
+                result.updated.push(id);
+            } else {
+                result.added.push(id);
+            }
+        }
+
+        // Remove old docs
+        for id in docs_to_remove {
+            self.remove_by_id(&id);
+
+            result.removed.push(id);
+        }
+
+        Ok(result)
     }
 }

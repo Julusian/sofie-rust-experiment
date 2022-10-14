@@ -45,10 +45,12 @@ pub async fn setNextPart(
     let nextPartInstance = cache.get_next_part_instance();
 
     if let Some(rawNextPart) = rawNextPart {
-        let activation_id =
-            cache.playlist.doc().activation_id.clone().ok_or_else(|| {
-                format!("RundownPlaylist \"{}\" is not active", cache.playlist_id)
-            })?;
+        let activation_id = cache.playlist.doc().activation_id.clone().ok_or_else(|| {
+            format!(
+                "RundownPlaylist \"{}\" is not active",
+                cache.playlist.doc_id().unprotect()
+            )
+        })?;
 
         // create new instance
         let new_instance_id = match &rawNextPart {
@@ -60,7 +62,7 @@ pub async fn setNextPart(
                         "PartInstance \"{}\" of rundown \"{}\" not part of RundownPlaylist \"{}\"",
                         instance.id.unprotect(),
                         instance.rundown_id.unprotect(),
-                        cache.playlist_id
+                        cache.playlist.doc_id().unprotect()
                     ));
                 }
 
@@ -119,7 +121,7 @@ pub async fn setNextPart(
                             "Part \"{}\" of rundown \"{}\" not part of RundownPlaylist \"{}\"",
                             part.id.unprotect(),
                             part.rundown_id.unprotect(),
-                            cache.playlist_id
+                            cache.playlist.doc_id().unprotect()
                         ));
                     }
 
