@@ -1,37 +1,44 @@
 // /** When we crop a piece, set the piece as "it has definitely ended" this far into the future. */
 // export const DEFINITELY_ENDED_FUTURE_DURATION = 1 * 1000
 
-// /**
-//  * We can only continue adlib onEnd infinites if we go forwards in the rundown. Any distance backwards will clear them.
-//  * */
-// export function canContinueAdlibOnEndInfinites(
-// 	_context: JobContext,
-// 	playlist: ReadonlyDeep<DBRundownPlaylist>,
-// 	orderedSegments: DBSegment[],
-// 	previousPartInstance: DBPartInstance | undefined,
-// 	candidateInstance: DBPart
-// ): boolean {
-// 	if (previousPartInstance && playlist) {
-// 		// When in the same segment, we can rely on the ranks to be in order. This is to handle orphaned parts, but is also valid for normal parts
-// 		if (candidateInstance.segmentId === previousPartInstance.segmentId) {
-// 			return candidateInstance._rank > previousPartInstance.part._rank
-// 		} else {
-// 			// Check if the segment is after the other
-// 			const previousSegmentIndex = orderedSegments.findIndex((s) => s._id === previousPartInstance.segmentId)
-// 			const candidateSegmentIndex = orderedSegments.findIndex((s) => s._id === candidateInstance.segmentId)
+/**
+ * We can only continue adlib onEnd infinites if we go forwards in the rundown. Any distance backwards will clear them.
+ * */
+pub fn canContinueAdlibOnEndInfinites(
+    _context: &JobContext,
+    _playlist: &RundownPlaylist,
+    ordered_segments: &[Segment],
+    previous_part_instance: Option<&PartInstance>,
+    candidate_instance: &Part,
+) -> bool {
+    if let Some(previous_part_instance) = previous_part_instance {
+        // When in the same segment, we can rely on the ranks to be in order. This is to handle orphaned parts, but is also valid for normal parts
+        if candidate_instance.segment_id == previous_part_instance.segment_id {
+            candidate_instance.rank > previous_part_instance.part.rank
+        } else {
+            // Check if the segment is after the other
+            let previous_segment_index = ordered_segments
+                .iter()
+                .position(|s| s.id == previous_part_instance.segment_id);
+            let candidate_segment_index = ordered_segments
+                .iter()
+                .position(|s| s.id == candidate_instance.segment_id);
 
-// 			if (previousSegmentIndex === -1 || candidateSegmentIndex === -1) {
-// 				// Should never happen, as orphaned segments are kept around
-// 				return false
-// 			}
-
-// 			return candidateSegmentIndex >= previousSegmentIndex
-// 		}
-// 	} else {
-// 		// There won't be anything to continue anyway..
-// 		return false
-// 	}
-// }
+            match (previous_segment_index, candidate_segment_index) {
+                (Some(previous_segment_index), Some(candidate_segment_index)) => {
+                    candidate_segment_index >= previous_segment_index
+                }
+                _ => {
+                    // Should never happen, as orphaned segments are kept around
+                    false
+                }
+            }
+        }
+    } else {
+        // There won't be anything to continue anyway..
+        false
+    }
+}
 
 struct IdsBeforeThisPart {
     parts_before_this_in_segment: Vec<String>,
@@ -100,6 +107,7 @@ fn getIdsBeforeThisPart(
     }
 }
 
+use chrono::{Duration, Utc};
 use itertools::Itertools;
 
 use crate::{
@@ -110,12 +118,15 @@ use crate::{
         piece::Piece,
         piece_instance::PieceInstance,
         rundown::Rundown,
+        rundown_playlist::RundownPlaylist,
+        segment::Segment,
     },
 };
 
 use super::{
     cache::{FakeDoc, PlayoutCache},
     context::JobContext,
+    infinites::processAndPrunePieceInstanceTimings,
     playlist::sortRundownIDsInPlaylist,
 };
 
@@ -211,28 +222,34 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                 .get_show_style_base(&rundown.show_style_base_id)
                 .await?;
 
+            let orderedPartsAndSegments = cache.get_ordered_segments_and_parts();
+
+            let canContinueAdlibOnEnds = canContinueAdlibOnEndInfinites(
+                context,
+                cache.playlist.doc(),
+                &orderedPartsAndSegments.segments,
+                Some(&currentPartInstance),
+                &nextPartInstance.part,
+            );
+            let playingPieceInstances = cache
+                .piece_instances
+                .find_some(|p| p.part_instance_id == currentPartInstance.id);
+
+            let nowInPart = Utc::now()
+                - (currentPartInstance
+                    .timings
+                    .planned_started_playback
+                    .unwrap_or());
+            let prunedPieceInstances = processAndPrunePieceInstanceTimings(
+                &showStyleBase.source_layers,
+                &playingPieceInstances,
+                nowInPart,
+                false,
+                true,
+            );
+
             //
             todo!()
-
-            // 		const orderedPartsAndSegments = getOrderedSegmentsAndPartsFromPlayoutCache(cache)
-
-            // 		const canContinueAdlibOnEnds = canContinueAdlibOnEndInfinites(
-            // 			context,
-            // 			playlist,
-            // 			orderedPartsAndSegments.segments,
-            // 			currentPartInstance,
-            // 			nextPartInstance.part
-            // 		)
-            // 		const playingPieceInstances = cache.PieceInstances.findAll((p) => p.partInstanceId === currentPartInstance._id)
-
-            // 		const nowInPart = getCurrentTime() - (currentPartInstance.timings?.plannedStartedPlayback ?? 0)
-            // 		const prunedPieceInstances = processAndPrunePieceInstanceTimings(
-            // 			showStyleBase.sourceLayers,
-            // 			playingPieceInstances,
-            // 			nowInPart,
-            // 			undefined,
-            // 			true
-            // 		)
 
             // 		const rundownIdsToShowstyleIds = getShowStyleIdsRundownMappingFromCache(cache)
 
