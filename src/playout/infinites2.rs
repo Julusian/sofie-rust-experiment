@@ -41,9 +41,9 @@ pub fn canContinueAdlibOnEndInfinites(
 }
 
 struct IdsBeforeThisPart {
-    parts_before_this_in_segment: Vec<String>,
-    segments_before_this_in_rundown: Vec<String>,
-    rundowns_before_this_in_playlist: Vec<String>,
+    parts_before_this_in_segment: Vec<PartId>,
+    segments_before_this_in_rundown: Vec<SegmentId>,
+    rundowns_before_this_in_playlist: Vec<RundownId>,
 }
 
 fn getIdsBeforeThisPart(
@@ -113,6 +113,7 @@ use itertools::Itertools;
 use crate::{
     cache::{collection::DbCacheReadCollection, object::DbCacheReadObject},
     data_model::{
+        ids::{PartId, PartInstanceId, RundownId, SegmentId},
         part::Part,
         part_instance::{PartInstance, PartInstanceOrphaned},
         piece::Piece,
@@ -212,7 +213,7 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                 .ok_or_else(|| {
                     format!(
                         "Rundown \"{}\" is not active",
-                        currentPartInstance.rundown_id
+                        currentPartInstance.rundown_id.unprotect()
                     )
                 })?;
 
@@ -285,7 +286,7 @@ pub fn getPieceInstancesForPart(
     rundown: &Rundown,
     part: &Part,
     possiblePieces: &[Piece],
-    newInstanceId: &str,
+    newInstanceId: &PartInstanceId,
     isTemporary: bool,
 ) -> Vec<PieceInstance> {
     todo!()

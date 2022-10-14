@@ -1,4 +1,5 @@
 pub mod extra;
+pub mod ids;
 pub mod part;
 pub mod part_instance;
 pub mod piece;

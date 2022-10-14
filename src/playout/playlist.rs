@@ -2,6 +2,8 @@ use std::collections::HashSet;
 
 use itertools::Itertools;
 
+use crate::data_model::ids::RundownId;
+
 // export function sortSegmentsInRundowns<TSegment extends Pick<DBSegment, '_id' | 'rundownId' | '_rank'>>(
 // 	segments: TSegment[],
 // 	playlist: Pick<ReadonlyDeep<DBRundownPlaylist>, 'rundownIdsInOrder'>
@@ -52,9 +54,9 @@ use itertools::Itertools;
  * @param unsortedRundownIds The ids to sort
  */
 pub fn sortRundownIDsInPlaylist(
-    sorted_possible_ids: &[String],
-    unsorted_rundown_ids: Vec<String>,
-) -> Vec<String> {
+    sorted_possible_ids: &[RundownId],
+    unsorted_rundown_ids: Vec<RundownId>,
+) -> Vec<RundownId> {
     let unsorted_rundown_ids_set = unsorted_rundown_ids.into_iter().collect::<HashSet<_>>();
 
     let mut sorted_verified_existing = sorted_possible_ids

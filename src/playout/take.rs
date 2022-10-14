@@ -4,7 +4,7 @@ use chrono::{DateTime, Duration, Utc};
 use sofie_rust_experiment::get_random_id;
 
 use super::{
-    cache::{FakeDoc, PlayoutCache},
+    cache::PlayoutCache,
     context::JobContext,
     infinites::processAndPrunePieceInstanceTimings,
     lib::is_too_close_to_autonext,
@@ -18,12 +18,14 @@ use crate::{
         object::{DbCacheReadObject, DbCacheWriteObject},
     },
     data_model::{
+        ids::{
+            PartInstanceId, PieceInstanceId, PieceInstanceInfiniteId, RundownPlaylistActivationId,
+        },
         part_instance::PartInstance,
-        piece::Piece,
         piece_instance::{PieceInstance, PieceInstanceInfinite},
         rundown::Rundown,
         rundown_playlist::{progress_hold_state, RundownHoldState},
-        show_style_base::{self, ShowStyleBase},
+        show_style_base::ShowStyleBase,
     },
 };
 
@@ -38,7 +40,10 @@ pub async fn take_next_part_inner(
         if let Some(activation_id) = &playlist.activation_id {
             Ok(activation_id.clone())
         } else {
-            Err(format!("Rundown Playlist {} is not active!", playlist.id))
+            Err(format!(
+                "Rundown Playlist {} is not active!",
+                playlist.id.unprotect()
+            ))
         }
     }?;
 
@@ -60,7 +65,7 @@ pub async fn take_next_part_inner(
                 .ok_or_else(|| {
                     format!(
                         "Rundown \"{}\" could not be found!",
-                        &part_instance.rundown_id
+                        &part_instance.rundown_id.unprotect()
                     )
                 })
         } else {
@@ -308,7 +313,8 @@ pub fn reset_previous_segment(cache: &mut PlayoutCache) -> Result<(), String> {
                 })
                 .map_err(|_| "Failed to reset PartInstances")?;
 
-            let updated_ids_set: HashSet<String> = HashSet::from_iter(updated_ids.into_iter());
+            let updated_ids_set: HashSet<PartInstanceId> =
+                HashSet::from_iter(updated_ids.into_iter());
 
             cache
                 .piece_instances
@@ -553,7 +559,7 @@ pub async fn after_take(
  */
 fn start_hold(
     cache: &mut PlayoutCache,
-    activation_id: &String,
+    activation_id: &RundownPlaylistActivationId,
     hold_from_part_instance: &PartInstance,
     hold_to_part_instance: &PartInstance,
 ) -> Result<(), String> {
@@ -563,7 +569,7 @@ fn start_hold(
 
     for instance in items_to_copy {
         if instance.infinite.is_none() {
-            let infinite_instance_id = get_random_id();
+            let infinite_instance_id = PieceInstanceInfiniteId::new_from(get_random_id());
 
             // mark current one as infinite
             cache
@@ -589,7 +595,7 @@ fn start_hold(
             new_instance_piece.extend_on_hold = false;
 
             let new_instance = PieceInstance {
-                id: format!("{}_hold", &instance.id),
+                id: PieceInstanceId::new_from(format!("{}_hold", &instance.id.unprotect())),
                 // playlistActivationId: activationId,
                 // rundownId: instance.rundownId,
                 part_instance_id: hold_to_part_instance.id.clone(),

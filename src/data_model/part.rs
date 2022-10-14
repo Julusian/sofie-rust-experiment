@@ -2,6 +2,8 @@ use chrono::Duration;
 
 use crate::cache::doc::DocWithId;
 
+use super::ids::{PartId, RundownId, SegmentId};
+
 #[derive(Clone)]
 pub struct PartInTransition {
     /** Duration this transition block a take for. After this time, another take is allowed which may cut this transition off early */
@@ -19,11 +21,11 @@ pub struct PartOutTransition {
 
 #[derive(Clone)]
 pub struct Part {
-    pub id: String,
+    pub id: PartId,
     pub rank: usize,
 
-    pub rundown_id: String,
-    pub segment_id: String,
+    pub rundown_id: RundownId,
+    pub segment_id: SegmentId,
 
     // pub autonext: bool, Implied by autonext_overlap being defined
     pub autonext_overlap: Option<Duration>,
@@ -38,8 +40,8 @@ pub struct Part {
     pub invalid: bool,
     pub floated: bool,
 }
-impl<'a> DocWithId<'a> for Part {
-    fn doc_id(&'a self) -> &'a str {
+impl<'a> DocWithId<'a, PartId> for Part {
+    fn doc_id(&'a self) -> &'a PartId {
         &self.id
     }
 }

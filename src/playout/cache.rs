@@ -9,36 +9,44 @@ use crate::{
         object::{DbCacheReadObject, DbCacheWriteObjectImpl},
     },
     data_model::{
-        part::Part, part_instance::PartInstance, piece_instance::PieceInstance, rundown::Rundown,
-        rundown_playlist::RundownPlaylist, segment::Segment,
+        ids::{
+            PartId, PartInstanceId, PieceInstanceId, RundownId, RundownPlaylistActivationId,
+            RundownPlaylistId, SegmentId, ShowStyleBaseId,
+        },
+        part::Part,
+        part_instance::PartInstance,
+        piece_instance::PieceInstance,
+        rundown::Rundown,
+        rundown_playlist::RundownPlaylist,
+        segment::Segment,
     },
 };
 
 #[derive(Clone)]
 pub struct FakeDoc {
-    pub id: String,
+    pub id: RundownPlaylistActivationId,
 }
-impl<'a> DocWithId<'a> for FakeDoc {
-    fn doc_id(&'a self) -> &'a str {
+impl<'a> DocWithId<'a, RundownPlaylistActivationId> for FakeDoc {
+    fn doc_id(&'a self) -> &'a RundownPlaylistActivationId {
         &self.id
     }
 }
 
 pub struct PlayoutCache {
     pub playlist_id: String,
-    pub playlist: DbCacheWriteObjectImpl<RundownPlaylist>,
+    pub playlist: DbCacheWriteObjectImpl<RundownPlaylist, RundownPlaylistId>,
 
     // pub playlist_lock: Rc<>
-    pub rundowns: DbCacheWriteCollectionImpl<Rundown>,
-    pub segments: DbCacheWriteCollectionImpl<Segment>,
-    pub parts: DbCacheWriteCollectionImpl<Part>,
-    pub part_instances: DbCacheWriteCollectionImpl<PartInstance>,
-    pub piece_instances: DbCacheWriteCollectionImpl<PieceInstance>,
+    pub rundowns: DbCacheWriteCollectionImpl<Rundown, RundownId>,
+    pub segments: DbCacheWriteCollectionImpl<Segment, SegmentId>,
+    pub parts: DbCacheWriteCollectionImpl<Part, PartId>,
+    pub part_instances: DbCacheWriteCollectionImpl<PartInstance, PartInstanceId>,
+    pub piece_instances: DbCacheWriteCollectionImpl<PieceInstance, PieceInstanceId>,
 
-    pub baseline_objects: DbCacheWriteCollectionImpl<FakeDoc>,
-    pub timeline: DbCacheWriteObjectImpl<FakeDoc>,
+    pub baseline_objects: DbCacheWriteCollectionImpl<FakeDoc, RundownPlaylistActivationId>,
+    pub timeline: DbCacheWriteObjectImpl<FakeDoc, RundownPlaylistActivationId>,
 
-    pub peripheral_devices: DbCacheWriteCollectionImpl<FakeDoc>,
+    pub peripheral_devices: DbCacheWriteCollectionImpl<FakeDoc, RundownPlaylistActivationId>,
 }
 impl PlayoutCache {
     pub fn get_current_part_instance(&self) -> Option<PartInstance> {
@@ -79,7 +87,7 @@ impl PlayoutCache {
         )
     }
 
-    pub fn get_rundown_ids_from_cache(&self) -> Vec<String> {
+    pub fn get_rundown_ids_from_cache(&self) -> Vec<RundownId> {
         self.rundowns
             .find_all()
             .into_iter()
@@ -87,7 +95,9 @@ impl PlayoutCache {
             .collect_vec()
     }
 
-    pub fn get_show_style_ids_rundown_mapping_from_cache(&self) -> HashMap<String, String> {
+    pub fn get_show_style_ids_rundown_mapping_from_cache(
+        &self,
+    ) -> HashMap<RundownId, ShowStyleBaseId> {
         self.rundowns
             .find_all()
             .into_iter()
@@ -102,9 +112,9 @@ pub struct SegmentsAndParts {
 }
 
 fn get_rundowns_segments_and_parts_from_caches(
-    parts_cache: &DbCacheWriteCollectionImpl<Part>,
-    segments_cache: &DbCacheWriteCollectionImpl<Segment>,
-    rundown_ids_in_order: &Vec<String>,
+    parts_cache: &DbCacheWriteCollectionImpl<Part, PartId>,
+    segments_cache: &DbCacheWriteCollectionImpl<Segment, SegmentId>,
+    rundown_ids_in_order: &Vec<RundownId>,
 ) -> SegmentsAndParts {
     todo!()
     // const segments = sortSegmentsInRundowns(

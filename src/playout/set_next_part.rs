@@ -1,4 +1,4 @@
-use std::{collections::HashSet, hash::Hash};
+use std::collections::HashSet;
 
 use chrono::{Duration, Utc};
 use sofie_rust_experiment::get_random_id;
@@ -9,7 +9,7 @@ use crate::{
         object::{DbCacheReadObject, DbCacheWriteObject},
     },
     data_model::{
-        part::Part,
+        ids::{PartInstanceId, SegmentPlayoutId},
         part_instance::{PartInstance, PartInstanceTimings},
     },
 };
@@ -58,7 +58,9 @@ pub async fn setNextPart(
                 } else if !rundownIds.contains(&instance.rundown_id) {
                     return Err(format!(
                         "PartInstance \"{}\" of rundown \"{}\" not part of RundownPlaylist \"{}\"",
-                        instance.id, instance.rundown_id, cache.playlist_id
+                        instance.id.unprotect(),
+                        instance.rundown_id.unprotect(),
+                        cache.playlist_id
                     ));
                 }
 
@@ -115,11 +117,17 @@ pub async fn setNextPart(
                     } else if !rundownIds.contains(&part.rundown_id) {
                         return Err(format!(
                             "Part \"{}\" of rundown \"{}\" not part of RundownPlaylist \"{}\"",
-                            part.id, part.rundown_id, cache.playlist_id
+                            part.id.unprotect(),
+                            part.rundown_id.unprotect(),
+                            cache.playlist_id
                         ));
                     }
 
-                    let id = format!("{}_{}", part.id, get_random_id());
+                    let id = PartInstanceId::new_from(format!(
+                        "{}_{}",
+                        part.id.unprotect(),
+                        get_random_id()
+                    ));
                     let new_take_count = currentPartInstance
                         .as_ref()
                         .map(|inst| inst.take_count + 1)
@@ -134,7 +142,7 @@ pub async fn setNextPart(
                                 None
                             }
                         })
-                        .unwrap_or_else(|| get_random_id());
+                        .unwrap_or_else(|| SegmentPlayoutId::new_from(get_random_id()));
 
                     cache
                         .part_instances
@@ -166,10 +174,13 @@ pub async fn setNextPart(
                         })
                         .map_err(|_| format!("Failed to create part instance"))?;
 
-                    let rundown = cache
-                        .rundowns
-                        .find_one_by_id(&part.rundown_id)
-                        .ok_or_else(|| format!("Could not find rundown {}", part.rundown_id))?;
+                    let rundown =
+                        cache
+                            .rundowns
+                            .find_one_by_id(&part.rundown_id)
+                            .ok_or_else(|| {
+                                format!("Could not find rundown {}", part.rundown_id.unprotect())
+                            })?;
 
                     let possible_pieces =
                         fetchPiecesThatMayBeActiveForPart(context, cache, None, &part).await?;

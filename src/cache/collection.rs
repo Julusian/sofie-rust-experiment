@@ -1,15 +1,16 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use super::doc::DocWithId;
 
 #[derive(Debug, Clone)]
-pub enum CacheCollectionError {
+pub enum CacheCollectionError<Id: Clone> {
     // Unknown(String),
     NotImplemented,
     IsToBeRemoved(&'static str),
-    AlreadyExists(String),
-    NotFound(String),
-    IdMismatch(String),
+    AlreadyExists(Id),
+    NotFound(Id),
+    IdMismatch(Id),
 }
 
 pub struct CollectionDoc<T> {
@@ -18,44 +19,51 @@ pub struct CollectionDoc<T> {
     pub document: T,
 }
 
-type Result<T> = std::result::Result<T, CacheCollectionError>;
+type Result<T, Id> = std::result::Result<T, CacheCollectionError<Id>>;
 
-pub trait DbCacheReadCollection<T: for<'a> DocWithId<'a>> {
+pub trait DbCacheReadCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> {
     fn name(&self) -> &str;
 
     fn find_all(&self) -> Vec<T>;
     fn find_some<F: Fn(&T) -> bool>(&self, cb: F) -> Vec<T>;
-    fn find_one_by_id(&self, id: &str) -> Option<T>;
+    fn find_one_by_id(&self, id: &Id) -> Option<T>;
     fn find_one<F: Fn(&T) -> bool>(&self, cb: F) -> Option<T>;
 }
 
-pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a>>: DbCacheReadCollection<T> {
+pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>:
+    DbCacheReadCollection<T, Id>
+{
     fn is_modified(&self) -> bool;
     fn mark_for_removal(&mut self);
 
-    fn insert(&mut self, doc: T) -> Result<()>;
-    fn remove_by_id(&mut self, id: &str) -> Result<bool>;
-    fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<String>>;
+    fn insert(&mut self, doc: T) -> Result<(), Id>;
+    fn remove_by_id(&mut self, id: &Id) -> Result<bool, Id>;
+    fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
 
     fn discard_changes(&mut self);
-    fn update_database_with_data(&mut self) -> Result<()>; // TODO
+    fn update_database_with_data(&mut self) -> Result<(), Id>; // TODO
 
-    fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &str, cb: F) -> Result<bool>;
-    fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<String>>;
+    fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &Id, cb: F) -> Result<bool, Id>;
+    fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
 
-    fn replace_one(&mut self, doc: T) -> Result<bool>;
+    fn replace_one(&mut self, doc: T) -> Result<bool, Id>;
 }
 
-pub struct DbCacheWriteCollectionImpl<T: for<'a> DocWithId<'a>> {
-    documents: HashMap<String, Option<CollectionDoc<T>>>,
+pub struct DbCacheWriteCollectionImpl<
+    T: for<'a> DocWithId<'a, Id>,
+    Id: Clone + PartialEq + Eq + Hash,
+> {
+    documents: HashMap<Id, Option<CollectionDoc<T>>>,
     documents_raw: Vec<T>,
 
     is_to_be_removed: bool,
 
     name: String,
 }
-impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollectionImpl<T> {
-    fn assert_not_to_be_removed(&self, method: &'static str) -> Result<()> {
+impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>
+    DbCacheWriteCollectionImpl<T, Id>
+{
+    fn assert_not_to_be_removed(&self, method: &'static str) -> Result<(), Id> {
         if self.is_to_be_removed {
             Err(CacheCollectionError::IsToBeRemoved(method))
         } else {
@@ -63,7 +71,9 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollectionImpl<T> {
         }
     }
 }
-impl<T: for<'a> DocWithId<'a>> DbCacheReadCollection<T> for DbCacheWriteCollectionImpl<T> {
+impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheReadCollection<T, Id>
+    for DbCacheWriteCollectionImpl<T, Id>
+{
     fn name(&self) -> &str {
         &self.name
     }
@@ -94,7 +104,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheReadCollection<T> for DbCacheWriteCollecti
 
         res
     }
-    fn find_one_by_id(&self, id: &str) -> Option<T> {
+    fn find_one_by_id(&self, id: &Id) -> Option<T> {
         let doc = self.documents.get(id);
         if let Some(doc) = doc {
             if let Some(doc) = doc {
@@ -118,7 +128,9 @@ impl<T: for<'a> DocWithId<'a>> DbCacheReadCollection<T> for DbCacheWriteCollecti
         None
     }
 }
-impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollectionImpl<T> {
+impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheWriteCollection<T, Id>
+    for DbCacheWriteCollectionImpl<T, Id>
+{
     fn is_modified(&self) -> bool {
         for doc in self.documents.iter() {
             if let Some(doc) = doc.1 {
@@ -138,16 +150,16 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         self.documents_raw.clear();
     }
 
-    fn insert(&mut self, doc: T) -> Result<()> {
+    fn insert(&mut self, doc: T) -> Result<(), Id> {
         self.assert_not_to_be_removed("insert")?;
 
         let id = doc.doc_id();
         let has_existing = self.documents.contains_key(id);
         if has_existing {
-            Err(CacheCollectionError::AlreadyExists(id.to_string()))
+            Err(CacheCollectionError::AlreadyExists(id.clone()))
         } else {
             self.documents.insert(
-                id.to_string(),
+                id.clone(),
                 Some(CollectionDoc {
                     inserted: !has_existing,
                     updated: has_existing,
@@ -159,11 +171,11 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         }
     }
 
-    fn remove_by_id(&mut self, id: &str) -> Result<bool> {
+    fn remove_by_id(&mut self, id: &Id) -> Result<bool, Id> {
         self.assert_not_to_be_removed("remove_by_id")?;
 
         if self.documents.contains_key(id) {
-            self.documents.insert(id.to_string(), None);
+            self.documents.insert(id.clone(), None);
 
             Ok(true)
         } else {
@@ -171,7 +183,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         }
     }
 
-    fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<String>> {
+    fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<Id>, Id> {
         self.assert_not_to_be_removed("remove_by_filter")?;
 
         let mut removed = Vec::new();
@@ -197,7 +209,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
 
             for doc in &self.documents_raw {
                 self.documents.insert(
-                    doc.doc_id().to_string(),
+                    doc.doc_id().clone(),
                     Some(CollectionDoc {
                         inserted: false,
                         updated: false,
@@ -208,12 +220,12 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         }
     }
 
-    fn update_database_with_data(&mut self) -> Result<()> {
+    fn update_database_with_data(&mut self) -> Result<(), Id> {
         // TODO
         Err(CacheCollectionError::NotImplemented)
     }
 
-    fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &str, cb: F) -> Result<bool> {
+    fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &Id, cb: F) -> Result<bool, Id> {
         self.assert_not_to_be_removed("update_one")?;
 
         let doc = self.documents.get_mut(id);
@@ -222,7 +234,7 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
                 let new_doc = cb(&doc.document);
                 if let Some(new_doc) = new_doc {
                     if new_doc.doc_id() != id {
-                        return Err(CacheCollectionError::IdMismatch(id.to_string()));
+                        return Err(CacheCollectionError::IdMismatch(id.clone()));
                     }
 
                     // TODO - some equality check?
@@ -233,14 +245,14 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
                     Ok(false)
                 }
             } else {
-                Err(CacheCollectionError::NotFound(id.to_string()))
+                Err(CacheCollectionError::NotFound(id.clone()))
             }
         } else {
-            Err(CacheCollectionError::NotFound(id.to_string()))
+            Err(CacheCollectionError::NotFound(id.clone()))
         }
     }
 
-    fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<String>> {
+    fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<Id>, Id> {
         self.assert_not_to_be_removed("update_all")?;
 
         let mut updated = Vec::new();
@@ -263,14 +275,14 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteCollection<T> for DbCacheWriteCollect
         Ok(updated)
     }
 
-    fn replace_one(&mut self, doc: T) -> Result<bool> {
+    fn replace_one(&mut self, doc: T) -> Result<bool, Id> {
         self.assert_not_to_be_removed("replace_one")?;
 
         let id = doc.doc_id();
         let has_existing = self.documents.contains_key(id);
 
         self.documents.insert(
-            id.to_string(),
+            id.clone(),
             Some(CollectionDoc {
                 inserted: !has_existing,
                 updated: has_existing,

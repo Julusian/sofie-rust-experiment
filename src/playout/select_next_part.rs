@@ -1,12 +1,16 @@
 use std::collections::HashMap;
 
-use crate::data_model::{part_instance::PartInstance, rundown_playlist::RundownPlaylist};
+use crate::data_model::{
+    ids::{PartId, SegmentId},
+    part_instance::PartInstance,
+    rundown_playlist::RundownPlaylist,
+};
 
 use super::cache::SegmentsAndParts;
 
 pub struct SelectNextPartResult {
-    pub part_id: String,
-    pub segment_id: String,
+    pub part_id: PartId,
+    pub segment_id: SegmentId,
     pub index: usize,
     pub consumes_next_segment_id: bool,
 }
@@ -38,7 +42,7 @@ pub fn select_next_part(
      * @param length the maximum index or where to stop the search
      */
     let find_first_playable_part = |offset: usize,
-                                    only_segment_id: Option<&String>,
+                                    only_segment_id: Option<&SegmentId>,
                                     length: Option<usize>|
      -> Option<SelectNextPartResult> {
         // Filter to after and find the first playabale

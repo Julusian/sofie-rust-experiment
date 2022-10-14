@@ -1,4 +1,5 @@
 use super::doc::DocWithId;
+use core::hash::Hash;
 
 #[derive(Debug, Clone)]
 pub enum CacheObjectError {
@@ -9,13 +10,15 @@ pub enum CacheObjectError {
 
 type Result<T> = std::result::Result<T, CacheObjectError>;
 
-pub trait DbCacheReadObject<T: for<'a> DocWithId<'a>> {
+pub trait DbCacheReadObject<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> {
     fn name(&self) -> &str;
 
     fn doc(&self) -> &T;
 }
 
-pub trait DbCacheWriteObject<T: for<'a> DocWithId<'a>>: DbCacheReadObject<T> {
+pub trait DbCacheWriteObject<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>:
+    DbCacheReadObject<T, Id>
+{
     fn is_modified(&self) -> bool;
     fn mark_for_removal(&mut self);
 
@@ -25,7 +28,9 @@ pub trait DbCacheWriteObject<T: for<'a> DocWithId<'a>>: DbCacheReadObject<T> {
     fn update<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<bool>;
 }
 
-pub struct DbCacheWriteObjectImpl<T: for<'a> DocWithId<'a>> {
+pub struct DbCacheWriteObjectImpl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> {
+    id: Id,
+
     document: T,
     document_raw: T,
 
@@ -34,7 +39,9 @@ pub struct DbCacheWriteObjectImpl<T: for<'a> DocWithId<'a>> {
 
     name: String,
 }
-impl<T: for<'a> DocWithId<'a>> DbCacheWriteObjectImpl<T> {
+impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>
+    DbCacheWriteObjectImpl<T, Id>
+{
     fn assert_not_to_be_removed(&self, method: &'static str) -> Result<()> {
         if self.is_to_be_removed {
             Err(CacheObjectError::IsToBeRemoved(method))
@@ -43,7 +50,9 @@ impl<T: for<'a> DocWithId<'a>> DbCacheWriteObjectImpl<T> {
         }
     }
 }
-impl<T: for<'a> DocWithId<'a>> DbCacheReadObject<T> for DbCacheWriteObjectImpl<T> {
+impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheReadObject<T, Id>
+    for DbCacheWriteObjectImpl<T, Id>
+{
     fn name(&self) -> &str {
         &self.name
     }
@@ -52,7 +61,9 @@ impl<T: for<'a> DocWithId<'a>> DbCacheReadObject<T> for DbCacheWriteObjectImpl<T
         &self.document
     }
 }
-impl<T: for<'a> DocWithId<'a>> DbCacheWriteObject<T> for DbCacheWriteObjectImpl<T> {
+impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheWriteObject<T, Id>
+    for DbCacheWriteObjectImpl<T, Id>
+{
     fn is_modified(&self) -> bool {
         self.updated
     }

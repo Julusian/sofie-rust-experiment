@@ -2,7 +2,10 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::cache::doc::DocWithId;
 
-use super::part::Part;
+use super::{
+    ids::{PartInstanceId, RundownId, SegmentId, SegmentPlayoutId},
+    part::Part,
+};
 
 #[derive(Clone)]
 pub struct PartInstanceTimings {
@@ -38,12 +41,12 @@ pub struct PartCalculatedTimings {
 
 #[derive(Clone)]
 pub struct PartInstance {
-    pub id: String,
+    pub id: PartInstanceId,
 
-    pub rundown_id: String,
-    pub segment_id: String,
+    pub rundown_id: RundownId,
+    pub segment_id: SegmentId,
 
-    pub segment_playout_id: String,
+    pub segment_playout_id: SegmentPlayoutId,
 
     pub part: Part,
     pub orphaned: PartInstanceOrphaned,
@@ -59,8 +62,8 @@ pub struct PartInstance {
 
     pub block_take_until: Option<DateTime<Utc>>,
 }
-impl<'a> DocWithId<'a> for PartInstance {
-    fn doc_id(&'a self) -> &'a str {
+impl<'a> DocWithId<'a, PartInstanceId> for PartInstance {
+    fn doc_id(&'a self) -> &'a PartInstanceId {
         &self.id
     }
 }

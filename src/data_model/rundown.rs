@@ -2,15 +2,17 @@ use chrono::{DateTime, Duration, Utc};
 
 use crate::cache::doc::DocWithId;
 
+use super::ids::{RundownId, ShowStyleBaseId, ShowStyleVariantId};
+
 #[derive(Clone)]
 pub struct Rundown {
-    pub id: String,
+    pub id: RundownId,
 
-    pub show_style_base_id: String,
-    pub show_style_variant_id: String,
+    pub show_style_base_id: ShowStyleBaseId,
+    pub show_style_variant_id: ShowStyleVariantId,
 }
-impl<'a> DocWithId<'a> for Rundown {
-    fn doc_id(&'a self) -> &'a str {
+impl<'a> DocWithId<'a, RundownId> for Rundown {
+    fn doc_id(&'a self) -> &'a RundownId {
         &self.id
     }
 }

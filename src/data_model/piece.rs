@@ -2,6 +2,8 @@ use chrono::Duration;
 
 use crate::cache::doc::DocWithId;
 
+use super::ids::PieceId;
+
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PieceEnableStart {
     Offset(Duration),
@@ -45,7 +47,7 @@ pub enum IBlueprintPieceType {
 
 #[derive(Clone)]
 pub struct Piece {
-    pub id: String,
+    pub id: PieceId,
 
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
@@ -58,8 +60,8 @@ pub struct Piece {
 
     pub extend_on_hold: bool,
 }
-impl<'a> DocWithId<'a> for Piece {
-    fn doc_id(&'a self) -> &'a str {
+impl<'a> DocWithId<'a, PieceId> for Piece {
+    fn doc_id(&'a self) -> &'a PieceId {
         &self.id
     }
 }
