@@ -1,8 +1,6 @@
-// import { DBRundownPlaylist } from '../dataModel/RundownPlaylist'
-// import { DBSegment } from '../dataModel/Segment'
-// import { DBPart } from '../dataModel/Part'
-// import { RundownId, SegmentId } from '../dataModel/Ids'
-// import { ReadonlyDeep } from 'type-fest'
+use std::collections::HashSet;
+
+use itertools::Itertools;
 
 // export function sortSegmentsInRundowns<TSegment extends Pick<DBSegment, '_id' | 'rundownId' | '_rank'>>(
 // 	segments: TSegment[],
@@ -48,10 +46,6 @@
 // 	})
 // }
 
-use std::collections::HashSet;
-
-use itertools::Itertools;
-
 /**
  * Sort an array of RundownIds based on a reference list
  * @param sortedPossibleIds The already sorted ids. This may be missing some of the unsorted ones
@@ -72,7 +66,6 @@ pub fn sortRundownIDsInPlaylist(
     let sorted_verified_existing_set = sorted_verified_existing.iter().collect::<HashSet<_>>();
 
     // Find the ids which are missing from the playlist (just in case)
-    // const missingIds = unsortedRundownIds.filter((id) => !sortedVerifiedExisting.includes(id)).sort()
     sorted_verified_existing.extend(
         unsorted_rundown_ids_set
             .into_iter()

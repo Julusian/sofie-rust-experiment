@@ -4,7 +4,7 @@ use crate::cache::doc::DocWithId;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum PieceEnableStart {
-    Offset(u64),
+    Offset(Duration),
     Now,
 }
 

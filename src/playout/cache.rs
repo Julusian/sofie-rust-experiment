@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 
 use crate::{
@@ -83,6 +85,14 @@ impl PlayoutCache {
             .into_iter()
             .map(|rd| rd.id)
             .collect_vec()
+    }
+
+    pub fn get_show_style_ids_rundown_mapping_from_cache(&self) -> HashMap<String, String> {
+        self.rundowns
+            .find_all()
+            .into_iter()
+            .map(|rd| (rd.id, rd.show_style_base_id))
+            .collect()
     }
 }
 

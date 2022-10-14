@@ -1,5 +1,6 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use chrono::Duration;
 use itertools::Itertools;
 
 use crate::data_model::{
@@ -79,170 +80,170 @@ use crate::data_model::{
 // 	}
 // }
 
-// export function getPlayheadTrackingInfinitesForPart(
-// 	playlistActivationId: RundownPlaylistActivationId,
-// 	partsBeforeThisInSegmentSet: Set<PartId>,
-// 	segmentsBeforeThisInRundownSet: Set<SegmentId>,
-// 	rundownsBeforeThisInPlaylist: RundownId[],
-// 	rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
-// 	currentPartInstance: DBPartInstance,
-// 	currentPartPieceInstances: PieceInstance[],
-// 	rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
-// 	part: DBPart,
-// 	newInstanceId: PartInstanceId,
-// 	nextPartIsAfterCurrentPart: boolean,
-// 	isTemporary: boolean
-// ): PieceInstance[] {
-// 	const canContinueAdlibOnEnds = nextPartIsAfterCurrentPart
-// 	interface InfinitePieceSet {
-// 		[PieceLifespan.OutOnShowStyleEnd]?: PieceInstance
-// 		[PieceLifespan.OutOnRundownEnd]?: PieceInstance
-// 		[PieceLifespan.OutOnSegmentEnd]?: PieceInstance
-// 		onChange?: PieceInstance
-// 	}
-// 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
+pub fn getPlayheadTrackingInfinitesForPart(
+    playlistActivationId: String,
+    partsBeforeThisInSegmentSet: &HashSet<String>,
+    segmentsBeforeThisInRundownSet: &HashSet<String>,
+    // rundownsBeforeThisInPlaylist: RundownId[],
+    // rundownsToShowstyles: Map<RundownId, ShowStyleBaseId>,
+    // currentPartInstance: DBPartInstance,
+    // currentPartPieceInstances: PieceInstance[],
+    // rundown: ReadonlyDeep<Pick<DBRundown, '_id' | 'showStyleBaseId'>>,
+    // part: DBPart,
+    // newInstanceId: PartInstanceId,
+    // nextPartIsAfterCurrentPart: boolean,
+    // isTemporary: boolean
+) -> Vec<PieceInstance> {
+    // 	const canContinueAdlibOnEnds = nextPartIsAfterCurrentPart
+    // 	interface InfinitePieceSet {
+    // 		[PieceLifespan.OutOnShowStyleEnd]?: PieceInstance
+    // 		[PieceLifespan.OutOnRundownEnd]?: PieceInstance
+    // 		[PieceLifespan.OutOnSegmentEnd]?: PieceInstance
+    // 		onChange?: PieceInstance
+    // 	}
+    // 	const piecesOnSourceLayers = new Map<string, InfinitePieceSet>()
 
-// 	const canContinueShowStyleEndInfinites = continueShowStyleEndInfinites(
-// 		rundownsBeforeThisInPlaylist,
-// 		rundownsToShowstyles,
-// 		currentPartInstance.rundownId,
-// 		rundown
-// 	)
+    // 	const canContinueShowStyleEndInfinites = continueShowStyleEndInfinites(
+    // 		rundownsBeforeThisInPlaylist,
+    // 		rundownsToShowstyles,
+    // 		currentPartInstance.rundownId,
+    // 		rundown
+    // 	)
 
-// 	const groupedPlayingPieceInstances = _.groupBy(currentPartPieceInstances, (p) => p.piece.sourceLayerId)
-// 	for (const [sourceLayerId, pieceInstances] of Object.entries(groupedPlayingPieceInstances)) {
-// 		// Find the ones that starts last. Note: any piece will stop an onChange
-// 		const lastPiecesByStart = _.groupBy(pieceInstances, (p) => p.piece.enable.start)
-// 		let lastPieceInstances = lastPiecesByStart['now'] || []
-// 		if (lastPieceInstances.length === 0) {
-// 			const target = max(Object.keys(lastPiecesByStart), (k) => Number(k))
-// 			if (target !== undefined) {
-// 				lastPieceInstances = lastPiecesByStart[target] || []
-// 			}
-// 		}
+    // 	const groupedPlayingPieceInstances = _.groupBy(currentPartPieceInstances, (p) => p.piece.sourceLayerId)
+    // 	for (const [sourceLayerId, pieceInstances] of Object.entries(groupedPlayingPieceInstances)) {
+    // 		// Find the ones that starts last. Note: any piece will stop an onChange
+    // 		const lastPiecesByStart = _.groupBy(pieceInstances, (p) => p.piece.enable.start)
+    // 		let lastPieceInstances = lastPiecesByStart['now'] || []
+    // 		if (lastPieceInstances.length === 0) {
+    // 			const target = max(Object.keys(lastPiecesByStart), (k) => Number(k))
+    // 			if (target !== undefined) {
+    // 				lastPieceInstances = lastPiecesByStart[target] || []
+    // 			}
+    // 		}
 
-// 		// Some basic resolving, to figure out which is our candidate
-// 		let lastPieceInstance: PieceInstance | undefined
-// 		for (const candidate of lastPieceInstances) {
-// 			if (lastPieceInstance === undefined || isCandidateBetterToBeContinued(lastPieceInstance, candidate)) {
-// 				lastPieceInstance = candidate
-// 			}
-// 		}
+    // 		// Some basic resolving, to figure out which is our candidate
+    // 		let lastPieceInstance: PieceInstance | undefined
+    // 		for (const candidate of lastPieceInstances) {
+    // 			if (lastPieceInstance === undefined || isCandidateBetterToBeContinued(lastPieceInstance, candidate)) {
+    // 				lastPieceInstance = candidate
+    // 			}
+    // 		}
 
-// 		if (lastPieceInstance && !lastPieceInstance.plannedStoppedPlayback && !lastPieceInstance.userDuration) {
-// 			// If it is an onChange, then it may want to continue
-// 			let isUsed = false
-// 			switch (lastPieceInstance.piece.lifespan) {
-// 				case PieceLifespan.OutOnSegmentChange:
-// 					if (currentPartInstance.segmentId === part.segmentId) {
-// 						// Still in the same segment
-// 						isUsed = true
-// 					}
-// 					break
-// 				case PieceLifespan.OutOnRundownChange:
-// 					if (lastPieceInstance.rundownId === part.rundownId) {
-// 						// Still in the same rundown
-// 						isUsed = true
-// 					}
-// 					break
-// 			}
+    // 		if (lastPieceInstance && !lastPieceInstance.plannedStoppedPlayback && !lastPieceInstance.userDuration) {
+    // 			// If it is an onChange, then it may want to continue
+    // 			let isUsed = false
+    // 			switch (lastPieceInstance.piece.lifespan) {
+    // 				case PieceLifespan.OutOnSegmentChange:
+    // 					if (currentPartInstance.segmentId === part.segmentId) {
+    // 						// Still in the same segment
+    // 						isUsed = true
+    // 					}
+    // 					break
+    // 				case PieceLifespan.OutOnRundownChange:
+    // 					if (lastPieceInstance.rundownId === part.rundownId) {
+    // 						// Still in the same rundown
+    // 						isUsed = true
+    // 					}
+    // 					break
+    // 			}
 
-// 			if (isUsed) {
-// 				const pieceSet = piecesOnSourceLayers.get(sourceLayerId) ?? {}
-// 				pieceSet.onChange = lastPieceInstance
-// 				piecesOnSourceLayers.set(sourceLayerId, pieceSet)
-// 				// This may get pruned later, if somethng else has a start of 0
-// 			}
-// 		}
+    // 			if (isUsed) {
+    // 				const pieceSet = piecesOnSourceLayers.get(sourceLayerId) ?? {}
+    // 				pieceSet.onChange = lastPieceInstance
+    // 				piecesOnSourceLayers.set(sourceLayerId, pieceSet)
+    // 				// This may get pruned later, if somethng else has a start of 0
+    // 			}
+    // 		}
 
-// 		// Check if we should persist any adlib onEnd infinites
-// 		if (canContinueAdlibOnEnds) {
-// 			const piecesByInfiniteMode = _.groupBy(
-// 				pieceInstances.filter((p) => p.dynamicallyInserted),
-// 				(p) => p.piece.lifespan
-// 			)
-// 			for (const mode0 of [
-// 				PieceLifespan.OutOnRundownEnd,
-// 				PieceLifespan.OutOnSegmentEnd,
-// 				PieceLifespan.OutOnShowStyleEnd,
-// 			]) {
-// 				const mode = mode0 as
-// 					| PieceLifespan.OutOnRundownEnd
-// 					| PieceLifespan.OutOnSegmentEnd
-// 					| PieceLifespan.OutOnShowStyleEnd
-// 				const pieces = (piecesByInfiniteMode[mode] || []).filter(
-// 					(p) => p.infinite && (p.infinite.fromPreviousPlayhead || p.dynamicallyInserted)
-// 				)
-// 				// This is the piece we may copy across
-// 				const candidatePiece =
-// 					pieces.find((p) => p.piece.enable.start === 'now') ?? max(pieces, (p) => p.piece.enable.start)
-// 				if (candidatePiece && !candidatePiece.plannedStoppedPlayback && !candidatePiece.userDuration) {
-// 					// Check this infinite is allowed to continue to this part
-// 					let isValid = false
-// 					switch (mode) {
-// 						case PieceLifespan.OutOnSegmentEnd:
-// 							isValid =
-// 								currentPartInstance.segmentId === part.segmentId &&
-// 								partsBeforeThisInSegmentSet.has(candidatePiece.piece.startPartId)
-// 							break
-// 						case PieceLifespan.OutOnRundownEnd:
-// 							isValid =
-// 								candidatePiece.rundownId === part.rundownId &&
-// 								(segmentsBeforeThisInRundownSet.has(currentPartInstance.segmentId) ||
-// 									currentPartInstance.segmentId === part.segmentId)
-// 							break
-// 						case PieceLifespan.OutOnShowStyleEnd:
-// 							isValid = canContinueShowStyleEndInfinites
-// 					}
+    // 		// Check if we should persist any adlib onEnd infinites
+    // 		if (canContinueAdlibOnEnds) {
+    // 			const piecesByInfiniteMode = _.groupBy(
+    // 				pieceInstances.filter((p) => p.dynamicallyInserted),
+    // 				(p) => p.piece.lifespan
+    // 			)
+    // 			for (const mode0 of [
+    // 				PieceLifespan.OutOnRundownEnd,
+    // 				PieceLifespan.OutOnSegmentEnd,
+    // 				PieceLifespan.OutOnShowStyleEnd,
+    // 			]) {
+    // 				const mode = mode0 as
+    // 					| PieceLifespan.OutOnRundownEnd
+    // 					| PieceLifespan.OutOnSegmentEnd
+    // 					| PieceLifespan.OutOnShowStyleEnd
+    // 				const pieces = (piecesByInfiniteMode[mode] || []).filter(
+    // 					(p) => p.infinite && (p.infinite.fromPreviousPlayhead || p.dynamicallyInserted)
+    // 				)
+    // 				// This is the piece we may copy across
+    // 				const candidatePiece =
+    // 					pieces.find((p) => p.piece.enable.start === 'now') ?? max(pieces, (p) => p.piece.enable.start)
+    // 				if (candidatePiece && !candidatePiece.plannedStoppedPlayback && !candidatePiece.userDuration) {
+    // 					// Check this infinite is allowed to continue to this part
+    // 					let isValid = false
+    // 					switch (mode) {
+    // 						case PieceLifespan.OutOnSegmentEnd:
+    // 							isValid =
+    // 								currentPartInstance.segmentId === part.segmentId &&
+    // 								partsBeforeThisInSegmentSet.has(candidatePiece.piece.startPartId)
+    // 							break
+    // 						case PieceLifespan.OutOnRundownEnd:
+    // 							isValid =
+    // 								candidatePiece.rundownId === part.rundownId &&
+    // 								(segmentsBeforeThisInRundownSet.has(currentPartInstance.segmentId) ||
+    // 									currentPartInstance.segmentId === part.segmentId)
+    // 							break
+    // 						case PieceLifespan.OutOnShowStyleEnd:
+    // 							isValid = canContinueShowStyleEndInfinites
+    // 					}
 
-// 					if (isValid) {
-// 						const pieceSet = piecesOnSourceLayers.get(sourceLayerId) ?? {}
-// 						pieceSet[mode] = candidatePiece
-// 						piecesOnSourceLayers.set(sourceLayerId, pieceSet)
-// 					}
-// 				}
-// 			}
-// 		}
-// 	}
+    // 					if (isValid) {
+    // 						const pieceSet = piecesOnSourceLayers.get(sourceLayerId) ?? {}
+    // 						pieceSet[mode] = candidatePiece
+    // 						piecesOnSourceLayers.set(sourceLayerId, pieceSet)
+    // 					}
+    // 				}
+    // 			}
+    // 		}
+    // 	}
 
-// 	const rewrapInstance = (p: PieceInstance | undefined): PieceInstance | undefined => {
-// 		if (p) {
-// 			const instance = rewrapPieceToInstance(
-// 				p.piece,
-// 				playlistActivationId,
-// 				part.rundownId,
-// 				newInstanceId,
-// 				isTemporary
-// 			)
-// 			markPieceInstanceAsContinuation(p, instance)
+    // 	const rewrapInstance = (p: PieceInstance | undefined): PieceInstance | undefined => {
+    // 		if (p) {
+    // 			const instance = rewrapPieceToInstance(
+    // 				p.piece,
+    // 				playlistActivationId,
+    // 				part.rundownId,
+    // 				newInstanceId,
+    // 				isTemporary
+    // 			)
+    // 			markPieceInstanceAsContinuation(p, instance)
 
-// 			if (p.infinite) {
-// 				// This was copied from before, so we know we can force the time to 0
-// 				instance.piece = {
-// 					...instance.piece,
-// 					enable: {
-// 						start: 0,
-// 					},
-// 				}
-// 				instance.infinite = {
-// 					...p.infinite,
-// 					infiniteInstanceIndex: p.infinite.infiniteInstanceIndex + 1,
-// 					fromPreviousPart: true,
-// 					fromPreviousPlayhead: true,
-// 				}
+    // 			if (p.infinite) {
+    // 				// This was copied from before, so we know we can force the time to 0
+    // 				instance.piece = {
+    // 					...instance.piece,
+    // 					enable: {
+    // 						start: 0,
+    // 					},
+    // 				}
+    // 				instance.infinite = {
+    // 					...p.infinite,
+    // 					infiniteInstanceIndex: p.infinite.infiniteInstanceIndex + 1,
+    // 					fromPreviousPart: true,
+    // 					fromPreviousPlayhead: true,
+    // 				}
 
-// 				return instance
-// 			}
-// 		}
-// 		return undefined
-// 	}
+    // 				return instance
+    // 			}
+    // 		}
+    // 		return undefined
+    // 	}
 
-// 	return flatten(
-// 		Array.from(piecesOnSourceLayers.values()).map((ps) => {
-// 			return _.compact(Object.values(ps).map(rewrapInstance))
-// 		})
-// 	)
-// }
+    // 	return flatten(
+    // 		Array.from(piecesOnSourceLayers.values()).map((ps) => {
+    // 			return _.compact(Object.values(ps).map(rewrapInstance))
+    // 		})
+    // 	)
+}
 
 // function markPieceInstanceAsContinuation(previousInstance: PieceInstance, instance: PieceInstance) {
 // 	instance._id = protectString(`${instance._id}_continue`)
@@ -476,7 +477,7 @@ use crate::data_model::{
 #[derive(Clone, PartialEq)]
 pub enum ResolvedEndCap {
     None,
-    Absolute(u64),
+    Absolute(Duration),
     Relative(String),
 }
 
@@ -550,7 +551,7 @@ fn is_capped_by_avirtual(
 pub fn processAndPrunePieceInstanceTimings(
     source_layers: &SourceLayers,
     pieces: &[PieceInstance],
-    now_in_part: u64,
+    now_in_part: Duration,
     keep_disabled_pieces: bool,
     include_virtual: bool,
 ) -> Vec<PieceInstanceWithTimings> {
@@ -725,7 +726,7 @@ fn update_with_new_pieces(
                 if let Some(active_other) =
                     active_pieces.get_mut(&PieceInstanceOnInfiniteLayersKeys::other)
                 {
-                    if new_pieces_start != &PieceEnableStart::Offset(0)
+                    if new_pieces_start != &PieceEnableStart::Offset(Duration::zero())
                         || isCandidateBetterToBeContinued(&active_other.piece, &new_piece.piece)
                     {
                         // These modes should stop the 'other' when they start if not hidden behind a higher priority onEnd

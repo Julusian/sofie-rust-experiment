@@ -235,11 +235,10 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                 .piece_instances
                 .find_some(|p| p.part_instance_id == currentPartInstance.id);
 
-            let nowInPart = Utc::now()
-                - (currentPartInstance
-                    .timings
-                    .planned_started_playback
-                    .unwrap_or());
+            let nowInPart = currentPartInstance
+                .timings
+                .planned_started_playback
+                .map_or(Duration::zero(), |start| Utc::now() - start);
             let prunedPieceInstances = processAndPrunePieceInstanceTimings(
                 &showStyleBase.source_layers,
                 &playingPieceInstances,
@@ -248,10 +247,10 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                 true,
             );
 
+            let rundownIdsToShowstyleIds = cache.get_show_style_ids_rundown_mapping_from_cache();
+
             //
             todo!()
-
-            // 		const rundownIdsToShowstyleIds = getShowStyleIdsRundownMappingFromCache(cache)
 
             // 		const infinites = libgetPlayheadTrackingInfinitesForPart(
             // 			playlist.activationId,
@@ -310,7 +309,7 @@ pub fn getPieceInstancesForPart(
     // 		part
     // 	)
 
-    // 	const rundownIdsToShowstyleIds = getShowStyleIdsRundownMappingFromCache(cache)
+    // let rundownIdsToShowstyleIds = cache.getShowStyleIdsRundownMappingFromCache();
 
     // 	const res = libgetPieceInstancesForPart(
     // 		playlist.activationId,

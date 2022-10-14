@@ -27,8 +27,7 @@ fn calculate_part_preroll(pieces: &[Piece]) -> Duration {
             PieceEnableStart::Offset(start) => {
                 if piece.preroll_duration > Duration::zero() {
                     // How far before the part does the piece protrude
-                    let offset =
-                        piece.preroll_duration - Duration::milliseconds(start.try_into().unwrap());
+                    let offset = piece.preroll_duration - start;
                     if offset > Duration::zero() && offset > longest {
                         longest = offset
                     }

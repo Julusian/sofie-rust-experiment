@@ -464,7 +464,7 @@ pub fn updatePartInstanceOnTake(
     let tmp_take_pieces = processAndPrunePieceInstanceTimings(
         &show_style.source_layers,
         &tmp_take_pieces_raw,
-        0,
+        Duration::zero(),
         false,
         false,
     );
