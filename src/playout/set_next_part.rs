@@ -17,6 +17,7 @@ use crate::{
 
 use super::{
     cache::PlayoutCache,
+    cleanup_orphaned::{cleanupOrphanedItems, resetPartInstancesWithPieceInstances},
     infinites2::{
         fetchPiecesThatMayBeActiveForPart, getPieceInstancesForPart,
         syncPlayheadInfinitesForNextPartInstance,
@@ -314,16 +315,16 @@ pub async fn setNextPart(
             }
 
             if resetPartInstanceIds.len() > 0 {
+                resetPartInstancesWithPieceInstances(context, cache, "AA".to_string());
                 // TODO
-                // resetPartInstancesWithPieceInstances(context, cache, {
+                // {
                 // 	_id: { $in: Array.from(resetPartInstanceIds) },
                 // })
             }
         }
     }
 
-    // TODO
-    // 	await cleanupOrphanedItems(context, cache)
+    cleanupOrphanedItems(context, cache).await;
 
     Ok(())
 }

@@ -3,6 +3,7 @@ extern crate protected_id_derive;
 extern crate uuid;
 
 pub mod cache;
+mod constants;
 pub mod context;
 pub mod data_model;
 pub mod ingest;
