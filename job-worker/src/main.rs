@@ -1,7 +1,11 @@
 use data_model::ids::PartId;
 use mongodb::{options::ClientOptions, Client};
 
-use crate::context::direct_collections::{DirectCollections, MongoReadOnlyCollection};
+use crate::{
+    context::direct_collections::{DirectCollections, MongoReadOnlyCollection},
+    data_model::ids::RundownPlaylistId,
+    playout::cache::PlayoutCache,
+};
 
 pub mod cache;
 mod constants;
@@ -40,4 +44,9 @@ async fn main() {
         .unwrap();
 
     println!("Doc {:?}", doc);
+
+    let playlist_id = RundownPlaylistId::new_from("ye8T_Hpg5nrN_zXHO2RwRtecqdg_".to_string());
+    let a = PlayoutCache::create(&collections, &playlist_id)
+        .await
+        .unwrap();
 }

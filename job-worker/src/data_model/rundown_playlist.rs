@@ -1,4 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
 
@@ -6,8 +8,9 @@ use super::ids::{
     PartInstanceId, RundownId, RundownPlaylistActivationId, RundownPlaylistId, SegmentId,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Deserialize, Serialize, Default)]
 pub enum RundownHoldState {
+    #[default]
     NONE = 0,
     PENDING = 1,  // During STK
     ACTIVE = 2,   // During full, STK is played
@@ -22,24 +25,33 @@ pub fn progress_hold_state(input: &RundownHoldState) -> RundownHoldState {
     }
 }
 
-#[derive(Clone)]
+#[serde_as]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct RundownPlaylist {
+    #[serde(rename = "_id")]
     pub id: RundownPlaylistId,
 
     pub activation_id: Option<RundownPlaylistActivationId>,
+    #[serde(default)]
     pub rehearsal: bool,
+    #[serde(default)]
     pub hold_state: RundownHoldState,
 
     pub current_part_instance_id: Option<PartInstanceId>,
     pub next_part_instance_id: Option<PartInstanceId>,
     pub previous_part_instance_id: Option<PartInstanceId>,
     pub next_segment_id: Option<SegmentId>,
+    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub next_time_offset: Option<Duration>,
+    #[serde(default)]
     pub next_part_manual: bool,
 
     pub started_playback: Option<DateTime<Utc>>,
 
     pub rundown_ids_in_order: Vec<RundownId>,
+    #[serde(default, rename = "loop")]
     pub loop_: bool,
 }
 impl<'a> DocWithId<'a, RundownPlaylistId> for RundownPlaylist {

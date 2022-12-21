@@ -44,6 +44,20 @@ pub struct DbCacheWriteObjectImpl<T: for<'a> DocWithId<'a, Id>, Id: Clone + Part
 impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>
     DbCacheWriteObjectImpl<T, Id>
 {
+    pub fn from_document(collection_name: String, doc: T) -> DbCacheWriteObjectImpl<T, Id> {
+        DbCacheWriteObjectImpl {
+            id: doc.doc_id().clone(),
+
+            document: doc.clone(),
+            document_raw: doc,
+
+            is_to_be_removed: false,
+            updated: false,
+
+            name: collection_name,
+        }
+    }
+
     fn assert_not_to_be_removed(&self, method: &'static str) -> Result<()> {
         if self.is_to_be_removed {
             Err(CacheObjectError::IsToBeRemoved(method))

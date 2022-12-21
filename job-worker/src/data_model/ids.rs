@@ -1,10 +1,16 @@
+use std::fmt::Display;
+
 use serde::{Deserialize, Serialize};
 
 pub trait ProtectedId {
     fn unprotect(&self) -> &str;
+    fn unprotect_move(self) -> String;
 }
 pub fn unprotect_array<Id: ProtectedId>(ids: &[Id]) -> Vec<&str> {
     ids.iter().map(|id| id.unprotect()).collect::<Vec<_>>()
+}
+pub fn unprotect_optional<Id: ProtectedId>(id: Option<Id>) -> Option<String> {
+    id.and_then(|id| Some(id.unprotect_move()))
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -17,6 +23,9 @@ impl PartId {
 impl ProtectedId for PartId {
     fn unprotect(&self) -> &str {
         &self.0
+    }
+    fn unprotect_move(self) -> String {
+        self.0
     }
 }
 
@@ -31,6 +40,9 @@ impl ProtectedId for RundownId {
     fn unprotect(&self) -> &str {
         &self.0
     }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -43,6 +55,14 @@ impl RundownPlaylistId {
 impl ProtectedId for RundownPlaylistId {
     fn unprotect(&self) -> &str {
         &self.0
+    }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
+}
+impl Display for RundownPlaylistId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
     }
 }
 
@@ -57,6 +77,9 @@ impl ProtectedId for RundownPlaylistActivationId {
     fn unprotect(&self) -> &str {
         &self.0
     }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -69,6 +92,9 @@ impl SegmentId {
 impl ProtectedId for SegmentId {
     fn unprotect(&self) -> &str {
         &self.0
+    }
+    fn unprotect_move(self) -> String {
+        self.0
     }
 }
 
@@ -83,6 +109,9 @@ impl ProtectedId for PartInstanceId {
     fn unprotect(&self) -> &str {
         &self.0
     }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -95,6 +124,9 @@ impl SegmentPlayoutId {
 impl ProtectedId for SegmentPlayoutId {
     fn unprotect(&self) -> &str {
         &self.0
+    }
+    fn unprotect_move(self) -> String {
+        self.0
     }
 }
 
@@ -109,6 +141,9 @@ impl ProtectedId for PieceId {
     fn unprotect(&self) -> &str {
         &self.0
     }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -121,6 +156,9 @@ impl PieceInstanceId {
 impl ProtectedId for PieceInstanceId {
     fn unprotect(&self) -> &str {
         &self.0
+    }
+    fn unprotect_move(self) -> String {
+        self.0
     }
 }
 
@@ -135,6 +173,9 @@ impl ProtectedId for PieceInstanceInfiniteId {
     fn unprotect(&self) -> &str {
         &self.0
     }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -148,6 +189,9 @@ impl ProtectedId for ShowStyleBaseId {
     fn unprotect(&self) -> &str {
         &self.0
     }
+    fn unprotect_move(self) -> String {
+        self.0
+    }
 }
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
@@ -160,5 +204,8 @@ impl ShowStyleVariantId {
 impl ProtectedId for ShowStyleVariantId {
     fn unprotect(&self) -> &str {
         &self.0
+    }
+    fn unprotect_move(self) -> String {
+        self.0
     }
 }

@@ -29,7 +29,7 @@ pub struct PartOutTransition {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Part {
     #[serde(rename = "_id")]
     pub id: PartId,

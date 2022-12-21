@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::cache::doc::DocWithId;
 
@@ -10,7 +11,8 @@ use super::{
     piece::Piece,
 };
 
-#[derive(Clone)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PieceInstanceInfinite {
     pub infinite_instance_id: PieceInstanceInfiniteId,
     pub infinite_instance_index: usize,
@@ -20,13 +22,16 @@ pub struct PieceInstanceInfinite {
     pub from_hold: bool,
 }
 
-#[derive(Clone)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PieceInstanceUserDuration {
     //
 }
 
-#[derive(Clone)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PieceInstance {
+    #[serde(rename = "_id")]
     pub id: PieceInstanceId,
 
     pub rundown_id: RundownId,

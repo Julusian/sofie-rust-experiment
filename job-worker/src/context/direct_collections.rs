@@ -4,14 +4,22 @@ use mongodb::{
     Collection, Database,
 };
 use serde::Deserialize;
-use std::hash::Hash;
+use std::{hash::Hash, rc::Rc};
 
 use crate::{
     cache::doc::DocWithId,
     data_model::{
-        ids::{PartId, PieceId, ProtectedId},
+        ids::{
+            unprotect_array, PartId, PartInstanceId, PieceId, PieceInstanceId, ProtectedId,
+            RundownId, RundownPlaylistId, SegmentId,
+        },
         part::Part,
+        part_instance::PartInstance,
         piece::Piece,
+        piece_instance::PieceInstance,
+        rundown::Rundown,
+        rundown_playlist::RundownPlaylist,
+        segment::Segment,
     },
 };
 
@@ -22,11 +30,17 @@ pub trait MongoReadOnlyCollection<
 {
     fn name(&self) -> &str;
 
+    fn find_fetch_by_ids<'a>(
+        &'a self,
+        ids: &'a [Id],
+        options: Option<String>,
+    ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>>;
     fn find_fetch<'a>(
         &'a self,
         query: impl Into<Option<Document>> + 'a,
         options: Option<String>,
     ) -> LocalBoxFuture<Result<Vec<Doc>, String>>;
+
     fn find_one_by_id<'a>(
         &'a self,
         id: &'a Id,
@@ -39,10 +53,10 @@ pub trait MongoReadOnlyCollection<
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>>;
 }
 
-pub trait MongoTransform<TLocal, TMongo> {
-    fn convert_local_to_mongo(&self, doc: &TLocal) -> TMongo;
-    fn convert_mongo_to_local(&self, doc: &TMongo) -> TLocal;
-}
+// pub trait MongoTransform<TLocal, TMongo> {
+//     fn convert_local_to_mongo(&self, doc: &TLocal) -> TMongo;
+//     fn convert_mongo_to_local(&self, doc: &TMongo) -> TLocal;
+// }
 
 pub struct MongoCollectionImpl<
     Doc: for<'b> DocWithId<'b, Id> + for<'de> Deserialize<'de>,
@@ -73,7 +87,7 @@ impl<
 
     #[inline]
     fn wrap_mongodb_error<T>(&self, value: mongodb::error::Result<T>) -> Result<T, String> {
-        value.map_err(|_err| format!("query failed"))
+        value.map_err(|err| format!("query failed: {}", err))
     }
 }
 impl<
@@ -83,6 +97,14 @@ impl<
 {
     fn name(&self) -> &str {
         &self.name
+    }
+
+    fn find_fetch_by_ids<'a>(
+        &'a self,
+        ids: &'a [Id],
+        options: Option<String>,
+    ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>> {
+        self.find_fetch(doc! { "_id": { "$in": unprotect_array(ids)} }, options)
     }
 
     fn find_fetch<'a>(
@@ -149,17 +171,17 @@ pub struct DirectCollections {
     // ExpectedPlayoutItems: ICollection<ExpectedPlayoutItem>
     // IngestDataCache: ICollection<IngestDataCacheObj>
     pub parts: MongoCollectionImpl<Part, PartId>,
-    // PartInstances: ICollection<DBPartInstance>
+    pub part_instances: MongoCollectionImpl<PartInstance, PartInstanceId>,
     // PeripheralDevices: ICollection<PeripheralDevice>
     // PeripheralDeviceCommands: ICollection<PeripheralDeviceCommand>
     pub pieces: MongoCollectionImpl<Piece, PieceId>,
-    // PieceInstances: ICollection<PieceInstance>
-    // Rundowns: ICollection<DBRundown>
+    pub piece_instances: MongoCollectionImpl<PieceInstance, PieceInstanceId>,
+    pub rundowns: MongoCollectionImpl<Rundown, RundownId>,
     // RundownBaselineAdLibActions: ICollection<RundownBaselineAdLibAction>
     // RundownBaselineAdLibPieces: ICollection<RundownBaselineAdLibItem>
     // RundownBaselineObjects: ICollection<RundownBaselineObj>
-    // RundownPlaylists: ICollection<DBRundownPlaylist>
-    // Segments: ICollection<DBSegment>
+    pub rundown_playlists: MongoCollectionImpl<RundownPlaylist, RundownPlaylistId>,
+    pub segments: MongoCollectionImpl<Segment, SegmentId>,
     // ShowStyleBases: ICollection<DBShowStyleBase>
     // ShowStyleVariants: ICollection<DBShowStyleVariant>
     // Studios: ICollection<DBStudio>
@@ -173,10 +195,15 @@ pub struct DirectCollections {
     // MediaObjects: ICollection<MediaObjects>
 }
 impl DirectCollections {
-    pub fn create(db: &Database) -> DirectCollections {
-        DirectCollections {
+    pub fn create(db: &Database) -> Rc<DirectCollections> {
+        Rc::new(DirectCollections {
             parts: MongoCollectionImpl::create(db, "parts"),
+            part_instances: MongoCollectionImpl::create(db, "partInstances"),
             pieces: MongoCollectionImpl::create(db, "pieces"),
-        }
+            piece_instances: MongoCollectionImpl::create(db, "pieceInstances"),
+            rundowns: MongoCollectionImpl::create(db, "rundowns"),
+            rundown_playlists: MongoCollectionImpl::create(db, "rundownPlaylists"),
+            segments: MongoCollectionImpl::create(db, "segments"),
+        })
     }
 }

@@ -1,11 +1,14 @@
 use chrono::{DateTime, Duration, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::cache::doc::DocWithId;
 
 use super::ids::{RundownId, ShowStyleBaseId, ShowStyleVariantId};
 
-#[derive(Clone)]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Rundown {
+    #[serde(rename = "_id")]
     pub id: RundownId,
 
     pub show_style_base_id: ShowStyleBaseId,

@@ -18,6 +18,15 @@ pub struct CollectionDoc<T> {
     pub updated: bool,
     pub document: T,
 }
+impl<T> CollectionDoc<T> {
+    pub(self) fn from(doc: T) -> Option<CollectionDoc<T>> {
+        Some(CollectionDoc {
+            inserted: false,
+            updated: false,
+            document: doc,
+        })
+    }
+}
 
 type Result<T, Id> = std::result::Result<T, CacheCollectionError<Id>>;
 
@@ -76,6 +85,23 @@ pub struct DbCacheWriteCollectionImpl<
 impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>
     DbCacheWriteCollectionImpl<T, Id>
 {
+    pub fn from_documents(
+        collection_name: String,
+        docs: &[T],
+    ) -> DbCacheWriteCollectionImpl<T, Id> {
+        DbCacheWriteCollectionImpl {
+            documents: docs
+                .iter()
+                .map(|doc| (doc.doc_id().clone(), CollectionDoc::from(doc.clone())))
+                .collect::<HashMap<_, _>>(),
+            documents_raw: docs.to_vec(),
+
+            is_to_be_removed: false,
+
+            name: collection_name,
+        }
+    }
+
     fn assert_not_to_be_removed(&self, method: &'static str) -> Result<(), Id> {
         if self.is_to_be_removed {
             Err(CacheCollectionError::IsToBeRemoved(method))
