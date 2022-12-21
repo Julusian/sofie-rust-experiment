@@ -14,8 +14,8 @@ pub enum SegmentOrphaned {
     HIDDEN, // = 'hidden',
 }
 
-#[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Segment {
     #[serde(rename = "_id")]
     pub id: SegmentId,

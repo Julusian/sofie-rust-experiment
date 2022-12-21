@@ -14,9 +14,8 @@ use crate::{
     context::direct_collections::{DirectCollections, MongoReadOnlyCollection},
     data_model::{
         ids::{
-            unprotect_array, unprotect_optional, PartId, PartInstanceId, PieceInstanceId,
-            ProtectedId, RundownId, RundownPlaylistActivationId, RundownPlaylistId, SegmentId,
-            ShowStyleBaseId,
+            unprotect_optional, PartId, PartInstanceId, PieceInstanceId, ProtectedId, RundownId,
+            RundownPlaylistActivationId, RundownPlaylistId, SegmentId, ShowStyleBaseId,
         },
         part::Part,
         part_instance::PartInstance,
@@ -28,7 +27,7 @@ use crate::{
     playout::playlist::sort_segments_in_rundowns,
 };
 
-use super::playlist::{self, sort_parts_in_sorted_segments};
+use super::playlist::sort_parts_in_sorted_segments;
 
 #[derive(Clone)]
 pub struct FakeDoc {

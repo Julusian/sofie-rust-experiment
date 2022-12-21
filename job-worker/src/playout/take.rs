@@ -123,7 +123,9 @@ pub async fn take_next_part_inner(
 
         // If hold is active, then this take is to clear it
     } else if cache.playlist.doc().hold_state == RundownHoldState::ACTIVE {
-        let show_style = p_show_style.await?;
+        let show_style = p_show_style
+            .await?
+            .ok_or(format!("ShowStyleCompound not found"))?;
 
         complete_hold(cache, &show_style).await?;
 
@@ -165,7 +167,9 @@ pub async fn take_next_part_inner(
         true,
     );
 
-    let show_style = p_show_style.await?;
+    let show_style = p_show_style
+        .await?
+        .ok_or(format!("ShowStyleCompound not found"))?;
     // 	const blueprint = await context.getShowStyleBlueprint(showStyle._id)
     // 	if (blueprint.blueprint.onPreTake) {
     // 		const span = context.startSpan('blueprint.onPreTake')

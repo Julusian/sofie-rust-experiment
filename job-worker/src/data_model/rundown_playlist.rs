@@ -1,5 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
@@ -8,7 +9,8 @@ use super::ids::{
     PartInstanceId, RundownId, RundownPlaylistActivationId, RundownPlaylistId, SegmentId,
 };
 
-#[derive(Clone, Copy, PartialEq, Deserialize, Serialize, Default)]
+#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Default)]
+#[repr(u8)]
 pub enum RundownHoldState {
     #[default]
     NONE = 0,
@@ -48,6 +50,10 @@ pub struct RundownPlaylist {
     #[serde(default)]
     pub next_part_manual: bool,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub started_playback: Option<DateTime<Utc>>,
 
     pub rundown_ids_in_order: Vec<RundownId>,

@@ -5,7 +5,7 @@ use crate::data_model::{
     show_style_base::ShowStyleBase,
 };
 
-use super::direct_collections::DirectCollections;
+use super::direct_collections::{DirectCollections, MongoReadOnlyCollection};
 
 pub struct JobContext {
     //
@@ -24,13 +24,17 @@ impl JobContext {
         &self,
         variant_id: &ShowStyleVariantId,
         base_id: &ShowStyleBaseId,
-    ) -> Result<ShowStyleBase, String> {
-        todo!()
+    ) -> Result<Option<ShowStyleBase>, String> {
+        // TODO - properly
+        self.get_show_style_base(base_id).await
     }
     pub async fn get_show_style_base(
         &self,
         base_id: &ShowStyleBaseId,
-    ) -> Result<ShowStyleBase, String> {
-        todo!()
+    ) -> Result<Option<ShowStyleBase>, String> {
+        self.collections
+            .show_style_bases
+            .find_one_by_id(base_id, None)
+            .await
     }
 }

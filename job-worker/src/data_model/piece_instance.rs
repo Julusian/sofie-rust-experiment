@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
 
@@ -17,8 +18,11 @@ pub struct PieceInstanceInfinite {
     pub infinite_instance_id: PieceInstanceInfiniteId,
     pub infinite_instance_index: usize,
     pub infinite_piece_id: PieceId,
+    #[serde(default)]
     pub from_previous_part: bool,
+    #[serde(default)]
     pub from_previous_playhead: bool,
+    #[serde(default)]
     pub from_hold: bool,
 }
 
@@ -28,6 +32,7 @@ pub struct PieceInstanceUserDuration {
     //
 }
 
+#[serde_as]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PieceInstance {
@@ -40,16 +45,38 @@ pub struct PieceInstance {
     pub piece: Piece,
 
     pub playlist_activation_id: RundownPlaylistActivationId,
+    #[serde(default)]
     pub reset: bool,
+    #[serde(default)]
     pub disabled: bool,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dynamically_inserted: Option<DateTime<Utc>>,
     pub adlib_source_id: Option<String>,
     pub infinite: Option<PieceInstanceInfinite>,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub planned_started_playback: Option<DateTime<Utc>>,
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub planned_stopped_playback: Option<DateTime<Utc>>,
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reported_started_playback: Option<DateTime<Utc>>,
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reported_stopped_playback: Option<DateTime<Utc>>,
 
     pub user_duration: Option<PieceInstanceUserDuration>,

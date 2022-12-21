@@ -17,6 +17,7 @@ pub enum PieceEnableStart {
 }
 
 #[serde_as]
+#[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PieceEnable {
     pub start: PieceEnableStart,
@@ -29,21 +30,27 @@ pub struct PieceEnable {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum PieceLifespan {
     /** The Piece will only exist in it's designated Part. As soon as the playhead leaves the Part, the Piece will stop */
+    #[serde(alias = "part-only")]
     WithinPart, // = 'part-only',
     /** The Piece will only exist in it's designated Segment. It will begin playing when taken and will stop when the
      * playhead leaves the Segment */
+    #[serde(alias = "segment-change")]
     OutOnSegmentChange, // = 'segment-change',
     /** The Piece will only exist in it's designated Segment. It will begin playing when taken and will stop when the
      * playhead leaves the Segment or the playhead moves before the beginning of the Piece */
+    #[serde(alias = "segment-end")]
     OutOnSegmentEnd, //= 'segment-end',
     /** The Piece will only exist in it's designated Rundown. It will begin playing when taken and will stop when the
      * playhead leaves the Rundown */
+    #[serde(alias = "rundown-change")]
     OutOnRundownChange, // = 'rundown-change',
     /** The Piece will only exist in it's designated Rundown. It will begin playing when taken and will stop when the
      * playhead leaves the Rundown or the playhead moves before the beginning of the Piece */
+    #[serde(alias = "rundown-end")]
     OutOnRundownEnd, //= 'rundown-end',
     /** The Piece will only exist while the ShowStyle doesn't change. It will begin playing when taken and will stop
      * when the playhead leaves the Rundown into a new Rundown with a different ShowStyle */
+    #[serde(alias = "showstyle-end")]
     OutOnShowStyleEnd, //= 'showstyle-end',
 }
 impl Into<bson::Bson> for PieceLifespan {
@@ -54,14 +61,19 @@ impl Into<bson::Bson> for PieceLifespan {
 
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum IBlueprintPieceType {
-    Normal,        // = 'normal',
-    InTransition,  // = 'in-transition',
+    #[serde(alias = "normal")]
+    Normal, // = 'normal',
+    #[serde(alias = "in-transition")]
+    InTransition, // = 'in-transition',
+    #[serde(alias = "out-transition")]
     OutTransition, // = 'out-transition',
 }
 
 #[serde_as]
+#[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Piece {
+    #[serde(rename = "_id")]
     pub id: PieceId,
 
     pub start_part_id: PartId,
@@ -71,14 +83,18 @@ pub struct Piece {
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde(default = "Duration::zero")]
     pub preroll_duration: Duration,
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde(default = "Duration::zero")]
     pub postroll_duration: Duration,
 
     pub source_layer_id: String,
+    #[serde(default)]
     pub virtual_: bool,
     pub piece_type: IBlueprintPieceType,
 
+    #[serde(default)]
     pub extend_on_hold: bool,
 }
 impl<'a> DocWithId<'a, PieceId> for Piece {

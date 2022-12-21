@@ -39,29 +39,35 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
         .find_some(|s| s.orphaned == SegmentOrphaned::No);
     let orphanedSegmentIds = segments.iter().map(|s| s.id.clone()).collect_vec();
 
-    let alterSegmentsFromRundowns: HashMap<RundownId, AlterOrphanedSegmentIds> = HashMap::new();
+    let mut alterSegmentsFromRundowns: HashMap<RundownId, AlterOrphanedSegmentIds> = HashMap::new();
     //= new Map<RundownId, { deleted: SegmentId[]; hidden: SegmentId[] }>()
     for segment in segments {
         // If the segment is orphaned and not the segment for the next or current partinstance
         if !selectedPartInstancesSegmentIds.contains(&segment.id) {
-            todo!()
-            // let mut rundownSegments = alterSegmentsFromRundowns.get(&segment.rundown_id);
-            // 			if (!rundownSegments) {
-            // 				rundownSegments = { deleted: [], hidden: [] }
-            // 				alterSegmentsFromRundowns.set(segment.rundownId, rundownSegments)
-            // 			}
-            // 			// The segment is finished with. Queue it for attempted removal or reingest
-            // 			switch (segment.orphaned) {
-            // 				case SegmentOrphanedReason.DELETED: {
-            // 					rundownSegments.deleted.push(segment._id)
-            // 					break
-            // 				}
-            // 				case SegmentOrphanedReason.HIDDEN: {
-            // 					// The segment is finished with. Queue it for attempted resync
-            // 					rundownSegments.hidden.push(segment._id)
-            // 					break
-            // 				}
-            // 			}
+            // todo!()
+            let rundown_segments_entry =
+                alterSegmentsFromRundowns.entry(segment.rundown_id.clone());
+            let rundown_segments = match rundown_segments_entry {
+                std::collections::hash_map::Entry::Occupied(e) => e.into_mut(),
+                std::collections::hash_map::Entry::Vacant(e) => e.insert(AlterOrphanedSegmentIds {
+                    deleted: vec![],
+                    hidden: vec![],
+                }),
+            };
+
+            // The segment is finished with. Queue it for attempted removal or reingest
+            match segment.orphaned {
+                SegmentOrphaned::DELETED => {
+                    rundown_segments.deleted.push(segment.id.clone());
+                }
+                SegmentOrphaned::HIDDEN => {
+                    // The segment is finished with. Queue it for attempted resync
+                    rundown_segments.hidden.push(segment.id.clone());
+                }
+                SegmentOrphaned::No => {
+                    // Do nothing
+                }
+            }
         }
     }
 

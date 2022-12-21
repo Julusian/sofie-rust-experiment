@@ -285,7 +285,8 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
 
             let show_style_base = context
                 .get_show_style_base(&rundown.show_style_base_id)
-                .await?;
+                .await?
+                .ok_or(format!("ShowStyleBase not found"))?;
 
             let ordered_parts_and_segments = cache.get_ordered_segments_and_parts();
 

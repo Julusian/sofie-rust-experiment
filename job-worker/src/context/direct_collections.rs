@@ -11,7 +11,7 @@ use crate::{
     data_model::{
         ids::{
             unprotect_array, PartId, PartInstanceId, PieceId, PieceInstanceId, ProtectedId,
-            RundownId, RundownPlaylistId, SegmentId,
+            RundownId, RundownPlaylistId, SegmentId, ShowStyleBaseId,
         },
         part::Part,
         part_instance::PartInstance,
@@ -20,6 +20,7 @@ use crate::{
         rundown::Rundown,
         rundown_playlist::RundownPlaylist,
         segment::Segment,
+        show_style_base::ShowStyleBase,
     },
 };
 
@@ -182,7 +183,7 @@ pub struct DirectCollections {
     // RundownBaselineObjects: ICollection<RundownBaselineObj>
     pub rundown_playlists: MongoCollectionImpl<RundownPlaylist, RundownPlaylistId>,
     pub segments: MongoCollectionImpl<Segment, SegmentId>,
-    // ShowStyleBases: ICollection<DBShowStyleBase>
+    pub show_style_bases: MongoCollectionImpl<ShowStyleBase, ShowStyleBaseId>,
     // ShowStyleVariants: ICollection<DBShowStyleVariant>
     // Studios: ICollection<DBStudio>
     // Timelines: ICollection<TimelineComplete>
@@ -204,6 +205,7 @@ impl DirectCollections {
             rundowns: MongoCollectionImpl::create(db, "rundowns"),
             rundown_playlists: MongoCollectionImpl::create(db, "rundownPlaylists"),
             segments: MongoCollectionImpl::create(db, "segments"),
+            show_style_bases: MongoCollectionImpl::create(db, "showStyleBases"),
         })
     }
 }

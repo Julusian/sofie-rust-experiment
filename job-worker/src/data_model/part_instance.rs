@@ -13,11 +13,24 @@ use super::{
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PartInstanceTimings {
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub planned_started_playback: Option<DateTime<Utc>>,
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub planned_stopped_playback: Option<DateTime<Utc>>,
 
+    #[serde_as(as = "serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub set_as_next: DateTime<Utc>,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub take: Option<DateTime<Utc>>,
     #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -54,6 +67,7 @@ pub struct PartCalculatedTimings {
     pub from_part_postroll: Duration,
 }
 
+#[serde_as]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PartInstance {
@@ -79,8 +93,13 @@ pub struct PartInstance {
     pub reset: bool,
     pub part_playout_timings: Option<PartCalculatedTimings>,
 
+    #[serde(default)]
     pub consumes_next_segment_id: bool,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub block_take_until: Option<DateTime<Utc>>,
 }
 impl<'a> DocWithId<'a, PartInstanceId> for PartInstance {
