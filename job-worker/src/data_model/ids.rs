@@ -1,8 +1,10 @@
+use serde::{Deserialize, Serialize};
+
 pub trait ProtectedId {
     fn unprotect(&self) -> &str;
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct PartId(String);
 impl PartId {
     pub fn new_from(str: String) -> PartId {
@@ -15,7 +17,7 @@ impl ProtectedId for PartId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash, PartialOrd, Ord)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash, PartialOrd, Ord)]
 pub struct RundownId(String);
 impl RundownId {
     pub fn new_from(str: String) -> RundownId {
@@ -28,7 +30,7 @@ impl ProtectedId for RundownId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct RundownPlaylistId(String);
 impl RundownPlaylistId {
     pub fn new_from(str: String) -> RundownPlaylistId {
@@ -41,7 +43,7 @@ impl ProtectedId for RundownPlaylistId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct RundownPlaylistActivationId(String);
 impl RundownPlaylistActivationId {
     pub fn new_from(str: String) -> RundownPlaylistActivationId {
@@ -54,7 +56,7 @@ impl ProtectedId for RundownPlaylistActivationId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct SegmentId(String);
 impl SegmentId {
     pub fn new_from(str: String) -> SegmentId {
@@ -67,7 +69,7 @@ impl ProtectedId for SegmentId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct PartInstanceId(String);
 impl PartInstanceId {
     pub fn new_from(str: String) -> PartInstanceId {
@@ -80,7 +82,7 @@ impl ProtectedId for PartInstanceId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct SegmentPlayoutId(String);
 impl SegmentPlayoutId {
     pub fn new_from(str: String) -> SegmentPlayoutId {
@@ -93,7 +95,7 @@ impl ProtectedId for SegmentPlayoutId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash, PartialOrd, Ord)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash, PartialOrd, Ord)]
 pub struct PieceId(String);
 impl PieceId {
     pub fn new_from(str: String) -> PieceId {
@@ -106,7 +108,7 @@ impl ProtectedId for PieceId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct PieceInstanceId(String);
 impl PieceInstanceId {
     pub fn new_from(str: String) -> PieceInstanceId {
@@ -119,7 +121,7 @@ impl ProtectedId for PieceInstanceId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct PieceInstanceInfiniteId(String);
 impl PieceInstanceInfiniteId {
     pub fn new_from(str: String) -> PieceInstanceInfiniteId {
@@ -132,7 +134,7 @@ impl ProtectedId for PieceInstanceInfiniteId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct ShowStyleBaseId(String);
 impl ShowStyleBaseId {
     pub fn new_from(str: String) -> ShowStyleBaseId {
@@ -145,7 +147,7 @@ impl ProtectedId for ShowStyleBaseId {
     }
 }
 
-#[derive(PartialEq, Clone, Eq, Hash)]
+#[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct ShowStyleVariantId(String);
 impl ShowStyleVariantId {
     pub fn new_from(str: String) -> ShowStyleVariantId {

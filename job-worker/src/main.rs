@@ -40,4 +40,6 @@ async fn main() {
         .find_one_by_id(&part_id, None)
         .await
         .unwrap();
+
+    println!("Doc {:?}", doc);
 }

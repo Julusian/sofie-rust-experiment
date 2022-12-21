@@ -1,5 +1,7 @@
-use futures::future::LocalBoxFuture;
+use futures::stream::{TryStream, TryStreamExt};
+use futures::{future::LocalBoxFuture, FutureExt, TryFutureExt};
 use mongodb::{bson::doc, Collection, Database};
+use serde::Deserialize;
 use std::hash::Hash;
 
 use crate::{
@@ -12,8 +14,7 @@ use crate::{
 };
 
 pub trait MongoReadOnlyCollection<
-    T: for<'a> DocWithId<'a, Id>,
-    TRaw,
+    Doc: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de>,
     Id: Clone + PartialEq + Eq + Hash,
 >
 {
@@ -23,17 +24,17 @@ pub trait MongoReadOnlyCollection<
         &self,
         query: String, //impl Into<Option<TRaw>>,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<Vec<T>, String>>;
+    ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>>;
     fn find_one_by_id<'a>(
-        &self,
-        id: &Id,
+        &'a self,
+        id: &'a Id,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<T, String>>;
+    ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>>;
     fn find_one<'a>(
         &self,
         query: String,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<T, String>>;
+    ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>>;
 }
 
 pub trait MongoTransform<TLocal, TMongo> {
@@ -42,22 +43,23 @@ pub trait MongoTransform<TLocal, TMongo> {
 }
 
 pub struct MongoCollectionImpl<
-    T: for<'a> DocWithId<'a, Id>,
-    RawDoc,
+    Doc: for<'b> DocWithId<'b, Id> + for<'de> Deserialize<'de>,
     Id: Clone + PartialEq + Eq + Hash,
 > {
     name: String,
 
-    aa: Option<T>,
+    aa: Option<Doc>,
     ai: Option<Id>,
     //
-    collection: Collection<RawDoc>,
+    collection: Collection<Doc>,
 }
-impl<T: for<'a> DocWithId<'a, Id>, RawDoc, Id: Clone + PartialEq + Eq + Hash>
-    MongoCollectionImpl<T, RawDoc, Id>
+impl<
+        Doc: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de>,
+        Id: Clone + PartialEq + Eq + Hash,
+    > MongoCollectionImpl<Doc, Id>
 {
-    pub fn create(db: &Database, name: &str) -> MongoCollectionImpl<T, RawDoc, Id> {
-        let collection = db.collection::<RawDoc>(name);
+    pub fn create(db: &Database, name: &str) -> MongoCollectionImpl<Doc, Id> {
+        let collection = db.collection::<Doc>(name);
 
         MongoCollectionImpl {
             name: name.to_string(),
@@ -76,8 +78,10 @@ impl<T: for<'a> DocWithId<'a, Id>, RawDoc, Id: Clone + PartialEq + Eq + Hash>
     //         todo!()
     //     }
 }
-impl<T: for<'a> DocWithId<'a, Id>, TRaw, Id: Clone + PartialEq + Eq + Hash + ProtectedId>
-    MongoReadOnlyCollection<T, TRaw, Id> for MongoCollectionImpl<T, TRaw, Id>
+impl<
+        Doc: for<'b> DocWithId<'b, Id> + for<'de> Deserialize<'de>,
+        Id: Clone + PartialEq + Eq + Hash + ProtectedId,
+    > MongoReadOnlyCollection<Doc, Id> for MongoCollectionImpl<Doc, Id>
 {
     fn name(&self) -> &str {
         &self.name
@@ -87,24 +91,39 @@ impl<T: for<'a> DocWithId<'a, Id>, TRaw, Id: Clone + PartialEq + Eq + Hash + Pro
         &self,
         query: String, //impl Into<Option<TRaw>>,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<Vec<T>, String>> {
+    ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>> {
         todo!()
     }
 
     fn find_one_by_id<'a>(
-        &self,
-        id: &Id,
+        &'a self,
+        id: &'a Id,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<T, String>> {
-        self.collection.find(doc! { "_id": id.unprotect() }, None);
-        todo!()
+    ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>> {
+        Box::pin(async move {
+            let mut cursor = self
+                .collection
+                .find(doc! { "_id": id.unprotect() }, None)
+                .await
+                .map_err(|_err| format!("query failed"))?;
+
+            let success = cursor.advance().await.unwrap();
+
+            if success {
+                let doc = cursor.deserialize_current().unwrap();
+                Ok(Some(doc))
+            // todo!()
+            } else {
+                Ok(None)
+            }
+        })
     }
 
     fn find_one<'a>(
         &self,
         query: String,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<T, String>> {
+    ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>> {
         todo!()
     }
 }
@@ -118,11 +137,11 @@ pub struct DirectCollections {
     // ExpectedMediaItems: ICollection<ExpectedMediaItem>
     // ExpectedPlayoutItems: ICollection<ExpectedPlayoutItem>
     // IngestDataCache: ICollection<IngestDataCacheObj>
-    pub parts: MongoCollectionImpl<Part, Part, PartId>,
+    pub parts: MongoCollectionImpl<Part, PartId>,
     // PartInstances: ICollection<DBPartInstance>
     // PeripheralDevices: ICollection<PeripheralDevice>
     // PeripheralDeviceCommands: ICollection<PeripheralDeviceCommand>
-    pub pieces: MongoCollectionImpl<Piece, Piece, PieceId>,
+    pub pieces: MongoCollectionImpl<Piece, PieceId>,
     // PieceInstances: ICollection<PieceInstance>
     // Rundowns: ICollection<DBRundown>
     // RundownBaselineAdLibActions: ICollection<RundownBaselineAdLibAction>

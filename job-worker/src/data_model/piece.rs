@@ -1,26 +1,31 @@
 use chrono::Duration;
+use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
 
-use super::{
-    ids::{PartId, PieceId, RundownId},
-    segment::Segment,
-};
+use super::ids::{PartId, PieceId, RundownId, SegmentId};
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[serde_as]
+#[derive(Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(untagged)]
 pub enum PieceEnableStart {
-    Offset(Duration),
+    Offset(#[serde_as(as = "serde_with::DurationSeconds<i64>")] Duration),
+    // TODO - this is broken..
     Now,
 }
 
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct PieceEnable {
     pub start: PieceEnableStart,
 
+    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<Duration>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum PieceLifespan {
     /** The Piece will only exist in it's designated Part. As soon as the playhead leaves the Part, the Piece will stop */
     WithinPart, // = 'part-only',
@@ -41,24 +46,27 @@ pub enum PieceLifespan {
     OutOnShowStyleEnd, //= 'showstyle-end',
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum IBlueprintPieceType {
     Normal,        // = 'normal',
     InTransition,  // = 'in-transition',
     OutTransition, // = 'out-transition',
 }
 
-#[derive(Clone)]
+#[serde_as]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Piece {
     pub id: PieceId,
 
     pub start_part_id: PartId,
-    pub start_segment_id: Segment,
+    pub start_segment_id: SegmentId,
     pub start_rundown_id: RundownId,
 
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
+    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub preroll_duration: Duration,
+    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub postroll_duration: Duration,
 
     pub source_layer_id: String,
