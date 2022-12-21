@@ -6,8 +6,8 @@ use itertools::Itertools;
 use crate::data_model::{
     extra::get_piece_control_object_id,
     ids::{
-        PartId, PartInstanceId, PieceInstanceId, RundownId, RundownPlaylistActivationId, SegmentId,
-        ShowStyleBaseId,
+        PartId, PartInstanceId, PieceInstanceId, ProtectedId, RundownId,
+        RundownPlaylistActivationId, SegmentId, ShowStyleBaseId,
     },
     part::Part,
     part_instance::PartInstance,

@@ -11,7 +11,7 @@ use crate::{
     },
     context::{context::JobContext, direct_collections::MongoReadOnlyCollection},
     data_model::{
-        ids::{PartId, PartInstanceId, RundownId, SegmentId},
+        ids::{PartId, PartInstanceId, ProtectedId, RundownId, SegmentId},
         part::Part,
         part_instance::{PartInstance, PartInstanceOrphaned},
         piece::Piece,

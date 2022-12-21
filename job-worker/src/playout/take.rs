@@ -19,7 +19,8 @@ use crate::{
     context::context::JobContext,
     data_model::{
         ids::{
-            PartInstanceId, PieceInstanceId, PieceInstanceInfiniteId, RundownPlaylistActivationId,
+            PartInstanceId, PieceInstanceId, PieceInstanceInfiniteId, ProtectedId,
+            RundownPlaylistActivationId,
         },
         part_instance::PartInstance,
         piece::PieceEnableStart,

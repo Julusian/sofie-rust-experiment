@@ -5,7 +5,7 @@ use std::hash::Hash;
 use crate::{
     cache::doc::DocWithId,
     data_model::{
-        ids::{PartId, PieceId},
+        ids::{PartId, PieceId, ProtectedId},
         part::Part,
         piece::Piece,
     },
@@ -96,7 +96,7 @@ impl<T: for<'a> DocWithId<'a, Id>, TRaw, Id: Clone + PartialEq + Eq + Hash + Pro
         id: &Id,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<T, String>> {
-        self.collection.find(doc! { "_id": id.value }, None);
+        self.collection.find(doc! { "_id": id.unprotect() }, None);
         todo!()
     }
 

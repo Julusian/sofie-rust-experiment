@@ -4,7 +4,7 @@ use crate::cache::doc::DocWithId;
 
 use super::{
     ids::{
-        PartInstanceId, PieceId, PieceInstanceId, PieceInstanceInfiniteId, RundownId,
+        PartInstanceId, PieceId, PieceInstanceId, PieceInstanceInfiniteId, ProtectedId, RundownId,
         RundownPlaylistActivationId,
     },
     piece::Piece,

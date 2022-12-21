@@ -10,7 +10,7 @@ use crate::{
     },
     context::context::JobContext,
     data_model::{
-        ids::{PartInstanceId, SegmentPlayoutId},
+        ids::{PartInstanceId, ProtectedId, SegmentPlayoutId},
         part_instance::{PartInstance, PartInstanceTimings},
     },
 };
