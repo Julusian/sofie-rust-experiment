@@ -1,6 +1,5 @@
 use chrono::Utc;
 use data_model::ids::PartId;
-use futures::TryFutureExt;
 use mongodb::{options::ClientOptions, Client};
 
 use crate::{
@@ -9,7 +8,7 @@ use crate::{
         direct_collections::{DirectCollections, MongoReadOnlyCollection},
     },
     data_model::ids::RundownPlaylistId,
-    playout::cache::PlayoutCache,
+    playout::{cache::PlayoutCache, take::take_next_part_inner},
 };
 
 pub mod cache;
@@ -19,9 +18,6 @@ pub mod data_model;
 pub mod ingest;
 pub mod lib;
 pub mod playout;
-// mod types;
-
-use crate::playout::take::take_next_part_inner;
 
 #[tokio::main]
 async fn main() {
