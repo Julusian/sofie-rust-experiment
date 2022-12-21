@@ -1,8 +1,15 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+};
 
 use itertools::Itertools;
 
-use crate::data_model::{ids::RundownId, part::Part, segment::Segment};
+use crate::data_model::{
+    ids::{ProtectedId, RundownId},
+    part::Part,
+    segment::Segment,
+};
 
 pub fn sort_segments_in_rundowns(
     mut segments: Vec<Segment>,
@@ -14,9 +21,15 @@ pub fn sort_segments_in_rundowns(
         .map(|(i, id)| (id.clone(), i))
         .collect::<HashMap<_, _>>();
 
-    segments.sort_by(|a, b| {
+    segments.sort_by(|a, b| -> std::cmp::Ordering {
         if a.rundown_id == b.rundown_id {
-            a.rank.cmp(&b.rank)
+            if a.rank < b.rank {
+                Ordering::Less
+            } else if a.rank > b.rank {
+                Ordering::Greater
+            } else {
+                a.id.unprotect().cmp(b.id.unprotect())
+            }
         } else {
             let rd_a = rundown_rank_lookup
                 .get(&a.rundown_id)
@@ -50,7 +63,13 @@ pub fn sort_parts_in_sorted_segments(
 
     parts.sort_by(|a, b| {
         if a.segment_id == b.segment_id {
-            a.rank.cmp(&b.rank)
+            if a.rank < b.rank {
+                Ordering::Less
+            } else if a.rank > b.rank {
+                Ordering::Greater
+            } else {
+                a.id.unprotect().cmp(b.id.unprotect())
+            }
         } else {
             let seg_a = segment_rank_lookup
                 .get(&a.segment_id)

@@ -4,6 +4,7 @@ use chrono::{Duration, Utc};
 use futures::future::LocalBoxFuture;
 use itertools::Itertools;
 use mongodb::bson::doc;
+use ordered_float::OrderedFloat;
 use tokio::join;
 
 use crate::{
@@ -134,7 +135,7 @@ fn getIdsBeforeThisPart(
 
     let parts_before_this_in_segment_sorted = parts_before_this_in_segment
         .into_iter()
-        .sorted_by_key(|p| p.rank)
+        .sorted_by_key(|p| OrderedFloat(p.rank))
         .map(|p| p.id)
         .collect();
 

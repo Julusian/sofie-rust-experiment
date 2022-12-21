@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -7,6 +9,7 @@ use crate::cache::doc::DocWithId;
 use super::ids::{PartId, RundownId, SegmentId};
 
 #[serde_as]
+#[serde(rename_all = "camelCase")]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PartInTransition {
     /** Duration this transition block a take for. After this time, another take is allowed which may cut this transition off early */
@@ -34,7 +37,7 @@ pub struct Part {
     #[serde(rename = "_id")]
     pub id: PartId,
     #[serde(rename = "_rank")]
-    pub rank: usize,
+    pub rank: f32,
 
     pub rundown_id: RundownId,
     pub segment_id: SegmentId,
@@ -44,6 +47,7 @@ pub struct Part {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub autonext_overlap: Option<Duration>,
 
+    #[serde(default)]
     pub disable_next_in_transition: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub in_transition: Option<PartInTransition>,

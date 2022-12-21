@@ -87,7 +87,7 @@ impl<
 
     #[inline]
     fn wrap_mongodb_error<T>(&self, value: mongodb::error::Result<T>) -> Result<T, String> {
-        value.map_err(|err| format!("query failed: {}", err))
+        value.map_err(|err| format!("query failed for \"{}\": {}", &self.name, err))
     }
 }
 impl<

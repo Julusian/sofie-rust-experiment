@@ -20,7 +20,7 @@ pub struct Segment {
     #[serde(rename = "_id")]
     pub id: SegmentId,
     #[serde(rename = "_rank")]
-    pub rank: usize,
+    pub rank: f32,
 
     pub rundown_id: RundownId,
 

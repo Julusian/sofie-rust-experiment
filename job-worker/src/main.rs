@@ -1,8 +1,13 @@
+use chrono::Utc;
 use data_model::ids::PartId;
+use futures::TryFutureExt;
 use mongodb::{options::ClientOptions, Client};
 
 use crate::{
-    context::direct_collections::{DirectCollections, MongoReadOnlyCollection},
+    context::{
+        context::JobContext,
+        direct_collections::{DirectCollections, MongoReadOnlyCollection},
+    },
     data_model::ids::RundownPlaylistId,
     playout::cache::PlayoutCache,
 };
@@ -15,6 +20,8 @@ pub mod ingest;
 pub mod lib;
 pub mod playout;
 // mod types;
+
+use crate::playout::take::take_next_part_inner;
 
 #[tokio::main]
 async fn main() {
@@ -46,7 +53,13 @@ async fn main() {
     println!("Doc {:?}", doc);
 
     let playlist_id = RundownPlaylistId::new_from("ye8T_Hpg5nrN_zXHO2RwRtecqdg_".to_string());
-    let a = PlayoutCache::create(&collections, &playlist_id)
+    let cache = PlayoutCache::create(&collections, &playlist_id)
         .await
         .unwrap();
+
+    let context = JobContext::create(collections);
+
+    let now = Utc::now();
+
+    take_next_part_inner(context, cache, now).await.unwrap();
 }

@@ -1,6 +1,6 @@
 use std::{collections::HashMap, rc::Rc};
 
-use futures::{FutureExt, TryFutureExt};
+use futures::TryFutureExt;
 use itertools::Itertools;
 use mongodb::bson::doc;
 use tokio::join;
