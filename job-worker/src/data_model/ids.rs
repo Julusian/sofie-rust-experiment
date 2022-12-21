@@ -3,6 +3,9 @@ use serde::{Deserialize, Serialize};
 pub trait ProtectedId {
     fn unprotect(&self) -> &str;
 }
+pub fn unprotect_array<Id: ProtectedId>(ids: &[Id]) -> Vec<&str> {
+    ids.iter().map(|id| id.unprotect()).collect::<Vec<_>>()
+}
 
 #[derive(PartialEq, Deserialize, Serialize, Clone, Debug, Eq, Hash)]
 pub struct PartId(String);

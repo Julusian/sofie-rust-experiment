@@ -1,6 +1,5 @@
 [workspace]
 
 members = [
-    "protected-id",
     "job-worker",
 ]

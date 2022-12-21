@@ -1,8 +1,10 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, future::ready};
 
 use chrono::{Duration, Utc};
-use futures::{future::LocalBoxFuture, join};
+use futures::future::LocalBoxFuture;
 use itertools::Itertools;
+use mongodb::bson::doc;
+use tokio::join;
 
 use crate::{
     cache::{
@@ -160,15 +162,15 @@ pub async fn fetchPiecesThatMayBeActiveForPart(
     // Find all the pieces starting in the part
     let pieces_for_part: LocalBoxFuture<Result<Vec<Piece>, String>> =
         if let Some(unsaved_ingest_cache) = unsaved_ingest_cache {
-            Box::pin(futures::future::ready(Ok(unsaved_ingest_cache
+            Box::pin(ready(Ok(unsaved_ingest_cache
                 .pieces
                 .find_some(|p| p.start_part_id == part.id))))
         } else {
-            // 	const thisPiecesQuery = { startPartId: part._id }
+            let this_pieces_query = doc! { "startPartId": part.id.unprotect() };
             context
                 .direct_collections()
                 .pieces
-                .find_fetch("".to_string(), None)
+                .find_fetch(this_pieces_query, None)
         };
 
     // Figure out the ids of everything else we will have to search through
@@ -203,7 +205,7 @@ pub async fn fetchPiecesThatMayBeActiveForPart(
                     .pieces
                     .find_fetch(previous_rundown_piece_query, None)
             } else {
-                Box::pin(futures::future::ready(Ok(Vec::new())))
+                Box::pin(ready(Ok(Vec::new())))
             };
 
         let results = join!(pieces_for_part, previous_rundown_pieces);
@@ -235,7 +237,7 @@ pub async fn fetchPiecesThatMayBeActiveForPart(
                     .pieces
                     .find_fetch(infinite_pieces_query, None)
             } else {
-                Box::pin(futures::future::ready(Ok(Vec::new())))
+                Box::pin(ready(Ok(Vec::new())))
             };
 
         let results = join!(pieces_for_part, infinite_pieces);

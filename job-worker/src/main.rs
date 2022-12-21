@@ -3,8 +3,6 @@ use mongodb::{options::ClientOptions, Client};
 
 use crate::context::direct_collections::{DirectCollections, MongoReadOnlyCollection};
 
-extern crate uuid;
-
 pub mod cache;
 mod constants;
 pub mod context;

@@ -1,4 +1,5 @@
 use chrono::Duration;
+use mongodb::bson::{self, Document};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -44,6 +45,11 @@ pub enum PieceLifespan {
     /** The Piece will only exist while the ShowStyle doesn't change. It will begin playing when taken and will stop
      * when the playhead leaves the Rundown into a new Rundown with a different ShowStyle */
     OutOnShowStyleEnd, //= 'showstyle-end',
+}
+impl Into<bson::Bson> for PieceLifespan {
+    fn into(self) -> bson::Bson {
+        bson::Bson::Int32(self as i32)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]

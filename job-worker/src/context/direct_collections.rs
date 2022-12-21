@@ -1,6 +1,8 @@
-use futures::stream::{TryStream, TryStreamExt};
-use futures::{future::LocalBoxFuture, FutureExt, TryFutureExt};
-use mongodb::{bson::doc, Collection, Database};
+use futures::future::LocalBoxFuture;
+use mongodb::{
+    bson::{doc, Document},
+    Collection, Database,
+};
 use serde::Deserialize;
 use std::hash::Hash;
 
@@ -21,18 +23,18 @@ pub trait MongoReadOnlyCollection<
     fn name(&self) -> &str;
 
     fn find_fetch<'a>(
-        &self,
-        query: String, //impl Into<Option<TRaw>>,
+        &'a self,
+        query: impl Into<Option<Document>> + 'a,
         options: Option<String>,
-    ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>>;
+    ) -> LocalBoxFuture<Result<Vec<Doc>, String>>;
     fn find_one_by_id<'a>(
         &'a self,
         id: &'a Id,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>>;
     fn find_one<'a>(
-        &self,
-        query: String,
+        &'a self,
+        query: impl Into<Option<Document>> + 'a,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>>;
 }
@@ -48,9 +50,8 @@ pub struct MongoCollectionImpl<
 > {
     name: String,
 
-    aa: Option<Doc>,
     ai: Option<Id>,
-    //
+
     collection: Collection<Doc>,
 }
 impl<
@@ -64,11 +65,15 @@ impl<
         MongoCollectionImpl {
             name: name.to_string(),
 
-            aa: None,
             ai: None,
 
             collection,
         }
+    }
+
+    #[inline]
+    fn wrap_mongodb_error<T>(&self, value: mongodb::error::Result<T>) -> Result<T, String> {
+        value.map_err(|_err| format!("query failed"))
     }
 }
 impl<
@@ -81,15 +86,27 @@ impl<
     }
 
     fn find_fetch<'a>(
-        &self,
-        query: String, //impl Into<Option<TRaw>>,
+        &'a self,
+        query: impl Into<Option<Document>> + 'a,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>> {
         if options.is_some() {
             unimplemented!()
         }
 
-        todo!()
+        Box::pin(async move {
+            let mut cursor = self.wrap_mongodb_error(self.collection.find(query, None).await)?;
+
+            // TODO - use try_collect() or try_stream() once that is possible without making the docs Send+Sync
+
+            let mut docs = vec![];
+
+            while self.wrap_mongodb_error(cursor.advance().await)? {
+                docs.push(self.wrap_mongodb_error(cursor.deserialize_current())?);
+            }
+
+            Ok(docs)
+        })
     }
 
     fn find_one_by_id<'a>(
@@ -97,46 +114,28 @@ impl<
         id: &'a Id,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>> {
-        if options.is_some() {
-            unimplemented!()
-        }
-
-        Box::pin(async move {
-            let mut cursor = self
-                .collection
-                .find(doc! { "_id": id.unprotect() }, None)
-                .await
-                .map_err(|_err| format!("query failed"))?;
-
-            let success = cursor
-                .advance()
-                .await
-                .map_err(|_err| format!("query failed"))?;
-
-            if success {
-                let doc = cursor.deserialize_current().map_err(|_err| {
-                    format!(
-                        "query fail
-                    ed"
-                    )
-                })?;
-                Ok(Some(doc))
-            } else {
-                Ok(None)
-            }
-        })
+        self.find_one(doc! { "_id": id.unprotect() }, options)
     }
 
     fn find_one<'a>(
-        &self,
-        query: String,
+        &'a self,
+        query: impl Into<Option<Document>> + 'a,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>> {
         if options.is_some() {
             unimplemented!()
         }
 
-        todo!()
+        Box::pin(async move {
+            let mut cursor = self.wrap_mongodb_error(self.collection.find(query, None).await)?;
+
+            if self.wrap_mongodb_error(cursor.advance().await)? {
+                let doc = self.wrap_mongodb_error(cursor.deserialize_current())?;
+                Ok(Some(doc))
+            } else {
+                Ok(None)
+            }
+        })
     }
 }
 

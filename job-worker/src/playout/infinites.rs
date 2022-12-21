@@ -2,11 +2,12 @@ use std::collections::{HashMap, HashSet};
 
 use chrono::Duration;
 use itertools::Itertools;
+use mongodb::bson::{self, doc};
 
 use crate::data_model::{
     extra::get_piece_control_object_id,
     ids::{
-        PartId, PartInstanceId, PieceInstanceId, ProtectedId, RundownId,
+        unprotect_array, PartId, PartInstanceId, PieceInstanceId, ProtectedId, RundownId,
         RundownPlaylistActivationId, SegmentId, ShowStyleBaseId,
     },
     part::Part,
@@ -22,67 +23,71 @@ pub fn buildPastInfinitePiecesForThisPartQuery(
     partsIdsBeforeThisInSegment: &[PartId],
     segmentsIdsBeforeThisInRundown: &[SegmentId],
     rundownIdsBeforeThisInPlaylist: &[RundownId],
-) -> Option<String> {
-    //MongoQuery<Piece> | null {
-    todo!()
-    // 	const fragments = _.compact([
-    // 		partsIdsBeforeThisInSegment.length > 0
-    // 			? {
-    // 					// same segment, and previous part
-    // 					lifespan: {
-    // 						$in: [
-    // 							PieceLifespan.OutOnSegmentEnd,
-    // 							PieceLifespan.OutOnSegmentChange,
-    // 							PieceLifespan.OutOnRundownEnd,
-    // 							PieceLifespan.OutOnRundownChange,
-    // 							PieceLifespan.OutOnShowStyleEnd,
-    // 						],
-    // 					},
-    // 					startRundownId: part.rundownId,
-    // 					startSegmentId: part.segmentId,
-    // 					startPartId: { $in: partsIdsBeforeThisInSegment },
-    // 			  }
-    // 			: undefined,
-    // 		segmentsIdsBeforeThisInRundown.length > 0
-    // 			? {
-    // 					// same rundown, and previous segment
-    // 					lifespan: {
-    // 						$in: [
-    // 							PieceLifespan.OutOnRundownEnd,
-    // 							PieceLifespan.OutOnRundownChange,
-    // 							PieceLifespan.OutOnShowStyleEnd,
-    // 						],
-    // 					},
-    // 					startRundownId: part.rundownId,
-    // 					startSegmentId: { $in: segmentsIdsBeforeThisInRundown },
-    // 			  }
-    // 			: undefined,
-    // 		rundownIdsBeforeThisInPlaylist.length > 0
-    // 			? {
-    // 					// previous rundown
-    // 					lifespan: {
-    // 						$in: [PieceLifespan.OutOnShowStyleEnd],
-    // 					},
-    // 					startRundownId: { $in: rundownIdsBeforeThisInPlaylist },
-    // 			  }
-    // 			: undefined,
-    // 	])
+) -> Option<bson::Document> {
+    let mut fragments = Vec::with_capacity(3);
 
-    // 	if (fragments.length === 0) {
-    // 		return null
-    // 	} else if (fragments.length === 1) {
-    // 		return {
-    // 			invalid: { $ne: true },
-    // 			startPartId: { $ne: part._id },
-    // 			...fragments[0],
-    // 		}
-    // 	} else {
-    // 		return {
-    // 			invalid: { $ne: true },
-    // 			startPartId: { $ne: part._id },
-    // 			$or: fragments,
-    // 		}
-    // 	}
+    if partsIdsBeforeThisInSegment.len() > 0 {
+        fragments.push(doc! {
+            // same segment, and previous part
+            "lifespan": {
+                "$in": vec![
+                    PieceLifespan::OutOnSegmentEnd,
+                    PieceLifespan::OutOnSegmentChange,
+                    PieceLifespan::OutOnRundownEnd,
+                    PieceLifespan::OutOnRundownChange,
+                    PieceLifespan::OutOnShowStyleEnd,
+                ],
+            },
+            "startRundownId": part.rundown_id.unprotect(),
+            "startSegmentId": part.segment_id.unprotect(),
+            "startPartId": { "$in": unprotect_array(partsIdsBeforeThisInSegment) },
+        });
+    }
+
+    if segmentsIdsBeforeThisInRundown.len() > 0 {
+        fragments.push(doc! {
+            // same rundown, and previous segment
+            "lifespan": {
+                "$in": vec![
+                    PieceLifespan::OutOnRundownEnd,
+                    PieceLifespan::OutOnRundownChange,
+                    PieceLifespan::OutOnShowStyleEnd,
+                ],
+            },
+            "startRundownId": part.rundown_id.unprotect(),
+            "startSegmentId": { "$in": unprotect_array(segmentsIdsBeforeThisInRundown) },
+        });
+    }
+
+    if rundownIdsBeforeThisInPlaylist.len() > 0 {
+        fragments.push(doc! {
+            // previous rundown
+            "lifespan": {
+                "$in": vec![
+                    PieceLifespan::OutOnShowStyleEnd,
+                ],
+            },
+            "startRundownId": { "$in":unprotect_array( rundownIdsBeforeThisInPlaylist) },
+        })
+    }
+
+    if fragments.len() == 0 {
+        None
+    } else if fragments.len() == 1 {
+        let mut res = doc! {
+            "invalid": { "$ne": true },
+            "startPartId": { "$ne": part.id.unprotect() },
+        };
+
+        res.extend(fragments.pop().unwrap());
+        Some(res)
+    } else {
+        Some(doc! {
+            "invalid": { "$ne": true },
+            "startPartId": { "$ne": part.id.unprotect() },
+            "$or": fragments,
+        })
+    }
 }
 
 pub fn getPlayheadTrackingInfinitesForPart(
