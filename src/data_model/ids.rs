@@ -1,3 +1,7 @@
+// trait ProtectedId2 {
+//     fn unprotect(&self) -> String;
+// }
+
 #[derive(ProtectedId, PartialEq, Clone, Eq, Hash)]
 pub struct PartId {
     #[protected_value]

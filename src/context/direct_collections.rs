@@ -1,5 +1,5 @@
 use futures::future::LocalBoxFuture;
-use mongodb::Collection;
+use mongodb::{bson::doc, Collection, Database};
 use std::hash::Hash;
 
 use crate::{
@@ -48,23 +48,35 @@ pub struct MongoCollectionImpl<
 > {
     name: String,
 
-    aa: T,
-    ai: Id,
+    aa: Option<T>,
+    ai: Option<Id>,
     //
     collection: Collection<RawDoc>,
 }
-// impl<T: for<'a> DocWithId<'a, Id>, RawDoc, Id: Clone + PartialEq + Eq + Hash>
-//     MongoCollectionImpl<T, RawDoc, Id>
-// {
-//     pub fn find_fetch<'a>(
-//         &self,
-//         query: String,
-//         options: Option<String>,
-//     ) -> BoxFuture<'a, Result<Vec<T>, String>> {
-//         todo!()
-//     }
-// }
-impl<T: for<'a> DocWithId<'a, Id>, TRaw, Id: Clone + PartialEq + Eq + Hash>
+impl<T: for<'a> DocWithId<'a, Id>, RawDoc, Id: Clone + PartialEq + Eq + Hash>
+    MongoCollectionImpl<T, RawDoc, Id>
+{
+    pub fn create(db: &Database, name: &str) -> MongoCollectionImpl<T, RawDoc, Id> {
+        let collection = db.collection::<RawDoc>(name);
+
+        MongoCollectionImpl {
+            name: name.to_string(),
+
+            aa: None,
+            ai: None,
+
+            collection,
+        }
+    }
+    //     pub fn find_fetch<'a>(
+    //         &self,
+    //         query: String,
+    //         options: Option<String>,
+    //     ) -> BoxFuture<'a, Result<Vec<T>, String>> {
+    //         todo!()
+    //     }
+}
+impl<T: for<'a> DocWithId<'a, Id>, TRaw, Id: Clone + PartialEq + Eq + Hash + ProtectedId>
     MongoReadOnlyCollection<T, TRaw, Id> for MongoCollectionImpl<T, TRaw, Id>
 {
     fn name(&self) -> &str {
@@ -84,6 +96,7 @@ impl<T: for<'a> DocWithId<'a, Id>, TRaw, Id: Clone + PartialEq + Eq + Hash>
         id: &Id,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<T, String>> {
+        self.collection.find(doc! { "_id": id.value }, None);
         todo!()
     }
 
@@ -128,4 +141,12 @@ pub struct DirectCollections {
     // ExternalMessageQueue: ICollection<ExternalMessageQueueObj>
 
     // MediaObjects: ICollection<MediaObjects>
+}
+impl DirectCollections {
+    pub fn create(db: &Database) -> DirectCollections {
+        DirectCollections {
+            parts: MongoCollectionImpl::create(db, "parts"),
+            pieces: MongoCollectionImpl::create(db, "pieces"),
+        }
+    }
 }
