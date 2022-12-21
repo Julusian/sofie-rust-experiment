@@ -70,13 +70,6 @@ impl<
             collection,
         }
     }
-    //     pub fn find_fetch<'a>(
-    //         &self,
-    //         query: String,
-    //         options: Option<String>,
-    //     ) -> BoxFuture<'a, Result<Vec<T>, String>> {
-    //         todo!()
-    //     }
 }
 impl<
         Doc: for<'b> DocWithId<'b, Id> + for<'de> Deserialize<'de>,
@@ -92,6 +85,10 @@ impl<
         query: String, //impl Into<Option<TRaw>>,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Vec<Doc>, String>> {
+        if options.is_some() {
+            unimplemented!()
+        }
+
         todo!()
     }
 
@@ -100,6 +97,10 @@ impl<
         id: &'a Id,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>> {
+        if options.is_some() {
+            unimplemented!()
+        }
+
         Box::pin(async move {
             let mut cursor = self
                 .collection
@@ -107,12 +108,19 @@ impl<
                 .await
                 .map_err(|_err| format!("query failed"))?;
 
-            let success = cursor.advance().await.unwrap();
+            let success = cursor
+                .advance()
+                .await
+                .map_err(|_err| format!("query failed"))?;
 
             if success {
-                let doc = cursor.deserialize_current().unwrap();
+                let doc = cursor.deserialize_current().map_err(|_err| {
+                    format!(
+                        "query fail
+                    ed"
+                    )
+                })?;
                 Ok(Some(doc))
-            // todo!()
             } else {
                 Ok(None)
             }
@@ -124,6 +132,10 @@ impl<
         query: String,
         options: Option<String>,
     ) -> LocalBoxFuture<'a, Result<Option<Doc>, String>> {
+        if options.is_some() {
+            unimplemented!()
+        }
+
         todo!()
     }
 }
