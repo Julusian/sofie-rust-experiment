@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::data_model::{
     ids::{ShowStyleBaseId, ShowStyleVariantId},
-    show_style_base::ShowStyleBase,
+    show_style_base::SourceLayers,
 };
 
 use super::direct_collections::{DirectCollections, MongoReadOnlyCollection};
@@ -32,9 +32,23 @@ impl JobContext {
         &self,
         base_id: &ShowStyleBaseId,
     ) -> Result<Option<ShowStyleBase>, String> {
-        self.collections
+        let db_show_style = self
+            .collections
             .show_style_bases
             .find_one_by_id(base_id, None)
-            .await
+            .await?;
+
+        Ok(db_show_style.and_then(|show_style| {
+            Some(ShowStyleBase {
+                id: show_style.id,
+                source_layers: show_style.source_layers_with_overrides.defaults, // TODO - respect overrides
+            })
+        }))
     }
+}
+
+pub struct ShowStyleBase {
+    pub id: ShowStyleBaseId,
+
+    pub source_layers: SourceLayers,
 }

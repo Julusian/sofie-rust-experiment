@@ -16,7 +16,7 @@ use crate::{
         collection::{DbCacheReadCollection, DbCacheWriteCollection},
         object::{DbCacheReadObject, DbCacheWriteObject},
     },
-    context::context::JobContext,
+    context::context::{JobContext, ShowStyleBase},
     data_model::{
         ids::{
             PartInstanceId, PieceInstanceId, PieceInstanceInfiniteId, ProtectedId,
@@ -27,13 +27,12 @@ use crate::{
         piece_instance::{PieceInstance, PieceInstanceInfinite},
         rundown::Rundown,
         rundown_playlist::{progress_hold_state, RundownHoldState},
-        show_style_base::ShowStyleBase,
     },
 };
 
 pub async fn take_next_part_inner(
     context: JobContext,
-    mut cache: PlayoutCache,
+    cache: &mut PlayoutCache,
     now: DateTime<Utc>,
 ) -> Result<(), String> {
     let playlist_activation_id = {
@@ -157,7 +156,7 @@ pub async fn take_next_part_inner(
     let is_first_time =
         !cache.playlist.doc().started_playback.is_some() && !take_part_instance.part.untimed;
 
-    clear_next_segment_id(&mut cache, &take_part_instance)?;
+    clear_next_segment_id(cache, &take_part_instance)?;
 
     let next_part = select_next_part(
         cache.playlist.doc(),
@@ -193,7 +192,7 @@ pub async fn take_next_part_inner(
 
     updatePartInstanceOnTake(
         &context,
-        &mut cache,
+        cache,
         &show_style,
         // blueprint,
         &take_rundown,
@@ -229,12 +228,12 @@ pub async fn take_next_part_inner(
         })
         .map_err(|_| "Failed to update taken partinstance".to_string())?;
 
-    reset_previous_segment(&mut cache)?;
+    reset_previous_segment(cache)?;
 
     // Once everything is synced, we can choose the next part
     setNextPart(
         &context,
-        &mut cache,
+        cache,
         next_part.map(|p| SetNextPartTarget::Part(p)),
         false,
         None,
@@ -249,14 +248,14 @@ pub async fn take_next_part_inner(
             &current_part_instance.ok_or_else(|| format!("previousPart not found!"))?;
 
         start_hold(
-            &mut cache,
+            cache,
             &playlist_activation_id,
             hold_from_part_instance,
             &take_part_instance,
         )?;
     }
 
-    after_take(&context, &mut cache, &take_part_instance, time_offset).await;
+    after_take(&context, cache, &take_part_instance, time_offset).await;
 
     // Last: TODO
     // 	const takeDoneTime = getCurrentTime()
@@ -643,7 +642,10 @@ fn start_hold(
     Ok(())
 }
 
-async fn complete_hold(mut cache: PlayoutCache, _show_style: &ShowStyleBase) -> Result<(), String> {
+async fn complete_hold(
+    cache: &mut PlayoutCache,
+    _show_style: &ShowStyleBase,
+) -> Result<(), String> {
     cache
         .playlist
         .update(|doc| {

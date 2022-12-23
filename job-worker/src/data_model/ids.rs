@@ -9,6 +9,9 @@ pub trait ProtectedId {
 pub fn unprotect_array<Id: ProtectedId>(ids: &[Id]) -> Vec<&str> {
     ids.iter().map(|id| id.unprotect()).collect::<Vec<_>>()
 }
+pub fn unprotect_refs_array<'a, Id: ProtectedId>(ids: &'a [&Id]) -> Vec<&'a str> {
+    ids.iter().map(|id| id.unprotect()).collect::<Vec<_>>()
+}
 pub fn unprotect_optional<Id: ProtectedId>(id: Option<Id>) -> Option<String> {
     id.and_then(|id| Some(id.unprotect_move()))
 }

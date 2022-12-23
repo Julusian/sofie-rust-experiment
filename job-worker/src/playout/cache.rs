@@ -259,6 +259,44 @@ impl PlayoutCache {
             .map(|rd| (rd.id, rd.show_style_base_id))
             .collect()
     }
+
+    pub async fn write_to_database(
+        &mut self,
+        collections: &Rc<DirectCollections>,
+    ) -> Result<(), String> {
+        let errs = join!(
+            self.playlist
+                .save_into_collection(&collections.rundown_playlists),
+            self.rundowns.save_into_collection(&collections.rundowns),
+            self.segments.save_into_collection(&collections.segments),
+            self.parts.save_into_collection(&collections.parts),
+            self.part_instances
+                .save_into_collection(&collections.part_instances),
+            self.piece_instances
+                .save_into_collection(&collections.piece_instances),
+        );
+
+        let results = [errs.0, errs.1, errs.2, errs.3, errs.4, errs.5];
+
+        let errs = results
+            .into_iter()
+            .filter_map(|r| match r {
+                Ok(_) => None,
+                Err(e) => Some(e),
+            })
+            .collect::<Vec<_>>();
+
+        if !errs.is_empty() {
+            let str = errs.join("\n");
+            Err(str)
+        } else {
+            Ok(())
+        }
+
+        // // pub baseline_objects: DbCacheWriteCollectionImpl<FakeDoc, RundownPlaylistActivationId>,
+        // // pub timeline: DbCacheWriteObjectImpl<FakeDoc, RundownPlaylistActivationId>,
+        // // pub peripheral_devices: DbCacheWriteCollectionImpl<FakeDoc, RundownPlaylistActivationId>,
+    }
 }
 
 pub struct SegmentsAndParts {

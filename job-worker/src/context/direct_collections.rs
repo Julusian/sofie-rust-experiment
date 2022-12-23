@@ -20,7 +20,7 @@ use crate::{
         rundown::Rundown,
         rundown_playlist::RundownPlaylist,
         segment::Segment,
-        show_style_base::ShowStyleBase,
+        show_style_base::DBShowStyleBase,
     },
 };
 
@@ -67,7 +67,7 @@ pub struct MongoCollectionImpl<
 
     ai: Option<Id>,
 
-    collection: Collection<Doc>,
+    pub collection: Collection<Doc>,
 }
 impl<
         Doc: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de>,
@@ -87,7 +87,7 @@ impl<
     }
 
     #[inline]
-    fn wrap_mongodb_error<T>(&self, value: mongodb::error::Result<T>) -> Result<T, String> {
+    pub fn wrap_mongodb_error<T>(&self, value: mongodb::error::Result<T>) -> Result<T, String> {
         value.map_err(|err| format!("query failed for \"{}\": {}", &self.name, err))
     }
 }
@@ -183,7 +183,7 @@ pub struct DirectCollections {
     // RundownBaselineObjects: ICollection<RundownBaselineObj>
     pub rundown_playlists: MongoCollectionImpl<RundownPlaylist, RundownPlaylistId>,
     pub segments: MongoCollectionImpl<Segment, SegmentId>,
-    pub show_style_bases: MongoCollectionImpl<ShowStyleBase, ShowStyleBaseId>,
+    pub show_style_bases: MongoCollectionImpl<DBShowStyleBase, ShowStyleBaseId>,
     // ShowStyleVariants: ICollection<DBShowStyleVariant>
     // Studios: ICollection<DBStudio>
     // Timelines: ICollection<TimelineComplete>

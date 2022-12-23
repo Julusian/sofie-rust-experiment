@@ -79,7 +79,7 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
                 // This is not valid as the rundownId won't match the externalId, so ingest will fail
                 // For now do nothing
             } else {
-                todo!()
+                // TODO - disable this in meteor too
                 // await context.queueIngestJob(IngestJobs.RemoveOrphanedSegments, {
                 // 	rundownExternalId: rundown.externalId,
                 // 	peripheralDeviceId: null,

@@ -1,3 +1,5 @@
+use std::{collections::HashMap, hash::Hash};
+
 use nanoid::nanoid;
 
 /**
@@ -14,4 +16,28 @@ const UNMISTAKABLE_CHARS: [char; 55] = [
 
 pub fn get_random_id() -> String {
     nanoid!(17, &UNMISTAKABLE_CHARS)
+}
+
+/**
+ * Convert an array to a Map, keyed on an id generator function.
+ * `undefined` key values will get filtered from the map
+ * Duplicate keys will cause entries to replace others silently
+ *
+ * ```
+ * normalizeArrayToMapFunc([{ a: 1, b: 2}], (o) => o.a + o.b)
+ * ```
+ */
+pub fn normalizeArrayToMapOfRefs<'a, T, K: Eq + Hash, F: Fn(&T) -> Option<K>>(
+    array: &'a [T],
+    get_key: F,
+) -> HashMap<K, &'a T> {
+    let mut result = HashMap::new();
+
+    for item in array {
+        if let Some(key) = get_key(item) {
+            result.insert(key, item);
+        }
+    }
+
+    result
 }

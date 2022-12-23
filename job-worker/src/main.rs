@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use chrono::Utc;
 use data_model::ids::PartId;
 use mongodb::{options::ClientOptions, Client};
@@ -17,6 +19,7 @@ pub mod context;
 pub mod data_model;
 pub mod ingest;
 pub mod lib;
+pub mod object_with_overrides;
 pub mod playout;
 
 #[tokio::main]
@@ -48,14 +51,22 @@ async fn main() {
 
     println!("Doc {:?}", doc);
 
+    let before = Instant::now();
+
     let playlist_id = RundownPlaylistId::new_from("ye8T_Hpg5nrN_zXHO2RwRtecqdg_".to_string());
-    let cache = PlayoutCache::create(&collections, &playlist_id)
+    let mut cache = PlayoutCache::create(&collections, &playlist_id)
         .await
         .unwrap();
 
-    let context = JobContext::create(collections);
+    let context = JobContext::create(collections.clone());
 
     let now = Utc::now();
 
-    take_next_part_inner(context, cache, now).await.unwrap();
+    take_next_part_inner(context, &mut cache, now)
+        .await
+        .unwrap();
+
+    cache.write_to_database(&collections).await.unwrap();
+
+    println!("Elapsed time: {:.2?}", before.elapsed());
 }

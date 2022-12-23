@@ -1,6 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
+use futures::future::join_all;
+use mongodb::bson::doc;
+use mongodb::options::ReplaceOptions;
+use serde::{Deserialize, Serialize};
+use tokio::join;
+
+use crate::context::direct_collections::MongoCollectionImpl;
+use crate::data_model::ids::{unprotect_array, unprotect_refs_array, ProtectedId};
+
 use super::doc::DocWithId;
 
 #[derive(Debug, Clone)]
@@ -30,7 +39,11 @@ impl<T> CollectionDoc<T> {
 
 type Result<T, Id> = std::result::Result<T, CacheCollectionError<Id>>;
 
-pub trait DbCacheReadCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> {
+pub trait DbCacheReadCollection<
+    T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+    Id: Clone + PartialEq + Eq + Hash + ProtectedId,
+>
+{
     fn name(&self) -> &str;
 
     fn find_all(&self) -> Vec<T>;
@@ -39,15 +52,17 @@ pub trait DbCacheReadCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + Partia
     fn find_one<F: Fn(&T) -> bool>(&self, cb: F) -> Option<T>;
 }
 
-pub struct ChangedIds<Id: Clone + PartialEq + Eq + Hash> {
+pub struct ChangedIds<Id: Clone + PartialEq + Eq + Hash + ProtectedId> {
     added: Vec<Id>,
     updated: Vec<Id>,
     removed: Vec<Id>,
     // unchanged: Vec<Id>,
 }
 
-pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>:
-    DbCacheReadCollection<T, Id>
+pub trait DbCacheWriteCollection<
+    T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+    Id: Clone + PartialEq + Eq + Hash + ProtectedId,
+>: DbCacheReadCollection<T, Id>
 {
     fn is_modified(&self) -> bool;
     fn mark_for_removal(&mut self);
@@ -72,8 +87,8 @@ pub trait DbCacheWriteCollection<T: for<'a> DocWithId<'a, Id>, Id: Clone + Parti
 }
 
 pub struct DbCacheWriteCollectionImpl<
-    T: for<'a> DocWithId<'a, Id>,
-    Id: Clone + PartialEq + Eq + Hash,
+    T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+    Id: Clone + PartialEq + Eq + Hash + ProtectedId,
 > {
     documents: HashMap<Id, Option<CollectionDoc<T>>>,
     documents_raw: Vec<T>,
@@ -82,8 +97,10 @@ pub struct DbCacheWriteCollectionImpl<
 
     name: String,
 }
-impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>
-    DbCacheWriteCollectionImpl<T, Id>
+impl<
+        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+        Id: Clone + PartialEq + Eq + Hash + ProtectedId,
+    > DbCacheWriteCollectionImpl<T, Id>
 {
     pub fn from_documents(
         collection_name: String,
@@ -109,9 +126,102 @@ impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash>
             Ok(())
         }
     }
+
+    pub async fn save_into_collection(
+        &mut self,
+        collection: &MongoCollectionImpl<T, Id>,
+    ) -> std::result::Result<(), String> {
+        if !self.is_to_be_removed {
+            let mut updates = Vec::new();
+            let mut removed_docs = Vec::new();
+
+            for (id, entry) in self.documents.iter_mut() {
+                if let Some(entry) = entry {
+                    if entry.inserted {
+                        let options = ReplaceOptions::builder().upsert(true).build();
+
+                        updates.push(collection.collection.replace_one(
+                            doc! {"_id": id.unprotect()},
+                            &entry.document,
+                            options,
+                        ));
+                    } else if entry.updated {
+                        let options = ReplaceOptions::builder().build();
+
+                        updates.push(collection.collection.replace_one(
+                            doc! {"_id": id.unprotect()},
+                            &entry.document,
+                            options,
+                        ));
+                    }
+
+                    entry.inserted = false;
+                    entry.updated = false;
+                    // 	}
+                } else {
+                    removed_docs.push(id);
+                }
+            }
+
+            // if !removed_docs.is_empty() {
+            //     updates.push(collection.collection.delete_many(
+            //         doc! {
+            //             "_id": { "$in": removed_docs}
+            //         },
+            //         None,
+            //     ));
+            // }
+
+            let results = if !updates.is_empty() {
+                join_all(updates).await
+            } else {
+                vec![]
+            };
+
+            let mut errs = results
+                .into_iter()
+                .filter_map(|r| match collection.wrap_mongodb_error(r) {
+                    Ok(_) => None,
+                    Err(e) => Some(e),
+                })
+                .collect::<Vec<_>>();
+
+            if !removed_docs.is_empty() {
+                let err = collection
+                    .collection
+                    .delete_many(
+                        doc! {
+                            "_id": { "$in": unprotect_refs_array(&removed_docs)}
+                        },
+                        None,
+                    )
+                    .await;
+
+                if let Err(e) = collection.wrap_mongodb_error(err) {
+                    errs.push(e);
+                }
+
+                for id in removed_docs {
+                    // TODO - fix this
+                    // self.documents.remove(id);
+                }
+            }
+
+            if !errs.is_empty() {
+                let str = errs.join("\n");
+                Err(str)
+            } else {
+                Ok(())
+            }
+        } else {
+            Ok(())
+        }
+    }
 }
-impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheReadCollection<T, Id>
-    for DbCacheWriteCollectionImpl<T, Id>
+impl<
+        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+        Id: Clone + PartialEq + Eq + Hash + ProtectedId,
+    > DbCacheReadCollection<T, Id> for DbCacheWriteCollectionImpl<T, Id>
 {
     fn name(&self) -> &str {
         &self.name
@@ -167,8 +277,10 @@ impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheRea
         None
     }
 }
-impl<T: for<'a> DocWithId<'a, Id>, Id: Clone + PartialEq + Eq + Hash> DbCacheWriteCollection<T, Id>
-    for DbCacheWriteCollectionImpl<T, Id>
+impl<
+        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+        Id: Clone + PartialEq + Eq + Hash + ProtectedId,
+    > DbCacheWriteCollection<T, Id> for DbCacheWriteCollectionImpl<T, Id>
 {
     fn is_modified(&self) -> bool {
         for doc in self.documents.iter() {
