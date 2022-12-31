@@ -1,0 +1,9 @@
+{
+  "name": "meteor-run",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "got": "^12.5.3"
+  }
+}

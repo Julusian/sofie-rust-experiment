@@ -1,15 +1,16 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use chrono::Utc;
 use data_model::ids::PartId;
-use mongodb::{options::ClientOptions, Client};
+use mongodb::{bson::doc, options::ClientOptions, Client};
+use tokio::time::sleep;
 
 use crate::{
     context::{
         context::JobContext,
         direct_collections::{DirectCollections, MongoReadOnlyCollection},
     },
-    data_model::ids::RundownPlaylistId,
+    data_model::ids::{ProtectedId, RundownPlaylistId},
     playout::{cache::PlayoutCache, take::take_next_part_inner},
 };
 
@@ -42,31 +43,63 @@ async fn main() {
 
     let collections = DirectCollections::create(&db);
 
-    let part_id = PartId::new_from("W3fAMjHrR6_gqXmzg9z_8PIzAnQ_".to_string());
-    let doc = collections
-        .parts
-        .find_one_by_id(&part_id, None)
+    let playlist = collections
+        .rundown_playlists
+        .find_one(doc! { "activationId": { "$exists": true} }, None)
         .await
-        .unwrap();
+        .unwrap()
+        .expect("No playlist is active!");
 
-    println!("Doc {:?}", doc);
+    // let part_id = PartId::new_from("W3fAMjHrR6_gqXmzg9z_8PIzAnQ_".to_string());
+    // let doc = collections
+    //     .parts
+    //     .find_one_by_id(&part_id, None)
+    //     .await
+    //     .unwrap();
 
-    let before = Instant::now();
+    println!("Found playlist {:?}", playlist.id);
 
-    let playlist_id = RundownPlaylistId::new_from("ye8T_Hpg5nrN_zXHO2RwRtecqdg_".to_string());
-    let mut cache = PlayoutCache::create(&collections, &playlist_id)
-        .await
-        .unwrap();
+    loop {
+        let playlist = collections
+            .rundown_playlists
+            .find_one_by_id(&playlist.id, None)
+            .await
+            .unwrap()
+            .expect("Playlist disappeared");
 
-    let context = JobContext::create(collections.clone());
+        if playlist.next_part_instance_id.is_none() {
+            break;
+        }
 
-    let now = Utc::now();
+        let part_instance = collections
+            .part_instances
+            .find_one_by_id(&playlist.next_part_instance_id.unwrap(), None)
+            .await
+            .unwrap()
+            .unwrap();
 
-    take_next_part_inner(context, &mut cache, now)
-        .await
-        .unwrap();
+        let before = Instant::now();
 
-    cache.write_to_database(&collections).await.unwrap();
+        let now = Utc::now();
 
-    println!("Elapsed time: {:.2?}", before.elapsed());
+        let mut cache = PlayoutCache::create(&collections, &playlist.id)
+            .await
+            .unwrap();
+
+        let context = JobContext::create(collections.clone());
+
+        take_next_part_inner(context, &mut cache, now)
+            .await
+            .unwrap();
+
+        cache.write_to_database(&collections).await.unwrap();
+
+        println!(
+            "{},{:.2?}",
+            part_instance.part.id.unprotect(),
+            before.elapsed().as_millis()
+        );
+
+        sleep(Duration::from_millis(1000)).await;
+    }
 }

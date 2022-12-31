@@ -11,7 +11,7 @@ use super::ids::{
     PartInstanceId, RundownId, RundownPlaylistActivationId, RundownPlaylistId, SegmentId,
 };
 
-#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Default)]
+#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Default, Debug)]
 #[repr(u8)]
 pub enum RundownHoldState {
     #[default]
@@ -31,7 +31,7 @@ pub fn progress_hold_state(input: &RundownHoldState) -> RundownHoldState {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct RundownPlaylist {
     #[serde(rename = "_id")]
     pub id: RundownPlaylistId,

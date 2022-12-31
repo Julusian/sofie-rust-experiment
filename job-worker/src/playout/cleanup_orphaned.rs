@@ -153,6 +153,10 @@ pub fn resetPartInstancesWithPieceInstances(
     // 	})
     // }
 
+    // cache.defer_after_save(|cache| {
+    //     //
+    // });
+
     // // Defer ones which arent loaded
     // cache.deferAfterSave(async (cache) => {
     // 	const partInstanceIdsInCache = cache.PartInstances.findAll(null).map((p) => p._id)
