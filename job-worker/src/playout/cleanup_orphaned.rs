@@ -34,9 +34,7 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
     };
 
     // Cleanup any orphaned segments once they are no longer being played. This also cleans up any adlib-parts, that have been marked as deleted as a deferred cleanup operation
-    let segments = cache
-        .segments
-        .find_some(|s| s.orphaned == SegmentOrphaned::No);
+    let segments = cache.segments.find_some(|s| s.orphaned.is_none());
     let orphanedSegmentIds = segments.iter().map(|s| s.id.clone()).collect_vec();
 
     let mut alterSegmentsFromRundowns: HashMap<RundownId, AlterOrphanedSegmentIds> = HashMap::new();
@@ -57,14 +55,14 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
 
             // The segment is finished with. Queue it for attempted removal or reingest
             match segment.orphaned {
-                SegmentOrphaned::DELETED => {
+                Some(SegmentOrphaned::DELETED) => {
                     rundown_segments.deleted.push(segment.id.clone());
                 }
-                SegmentOrphaned::HIDDEN => {
+                Some(SegmentOrphaned::HIDDEN) => {
                     // The segment is finished with. Queue it for attempted resync
                     rundown_segments.hidden.push(segment.id.clone());
                 }
-                SegmentOrphaned::No => {
+                None => {
                     // Do nothing
                 }
             }
@@ -96,7 +94,7 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
                                                 // Cleanup any orphaned partinstances once they are no longer being played (and the segment isnt orphaned)
     let orphanedInstances = cache
         .part_instances
-        .find_some(|p| p.orphaned == PartInstanceOrphaned::Deleted && !p.reset);
+        .find_some(|p| p.orphaned == Some(PartInstanceOrphaned::Deleted) && !p.reset);
     for partInstance in orphanedInstances {
         if (PRESERVE_UNSYNCED_PLAYING_SEGMENT_CONTENTS
             && orphanedSegmentIds.contains(&partInstance.segment_id))

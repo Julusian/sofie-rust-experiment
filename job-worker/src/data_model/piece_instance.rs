@@ -26,12 +26,6 @@ pub struct PieceInstanceInfinite {
     pub from_hold: bool,
 }
 
-#[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
-pub struct PieceInstanceUserDuration {
-    //
-}
-
 #[serde_as]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
@@ -42,13 +36,15 @@ pub struct PieceInstance {
     pub rundown_id: RundownId,
     pub part_instance_id: PartInstanceId,
 
-    pub piece: Piece,
+    pub piece: Piece, // TODO - is this bad?
 
     pub playlist_activation_id: RundownPlaylistActivationId,
     #[serde(default)]
     pub reset: bool,
     #[serde(default)]
     pub disabled: bool,
+    #[serde(default)]
+    pub hidden: bool,
 
     #[serde_as(
         as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
@@ -79,7 +75,8 @@ pub struct PieceInstance {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reported_stopped_playback: Option<DateTime<Utc>>,
 
-    pub user_duration: Option<PieceInstanceUserDuration>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_duration: Option<serde_json::Value>,
 }
 impl<'a> DocWithId<'a, PieceInstanceId> for PieceInstance {
     fn doc_id(&'a self) -> &'a PieceInstanceId {
@@ -109,6 +106,7 @@ pub fn rewrapPieceToInstance(
         playlist_activation_id,
         reset: false,
         disabled: false,
+        hidden: false,
         // is_temporary,
         dynamically_inserted: None,
         adlib_source_id: None,

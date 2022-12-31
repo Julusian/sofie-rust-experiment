@@ -80,6 +80,12 @@ pub struct Piece {
     pub start_segment_id: SegmentId,
     pub start_rundown_id: RundownId,
 
+    pub external_id: String,
+    pub name: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub meta_data: Option<serde_json::Value>,
+
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
@@ -90,12 +96,42 @@ pub struct Piece {
     pub postroll_duration: Duration,
 
     pub source_layer_id: String,
+    pub output_layer_id: String,
+
     #[serde(default)]
     pub virtual_: bool,
     pub piece_type: IBlueprintPieceType,
 
     #[serde(default)]
     pub extend_on_hold: bool,
+
+    #[serde(default)]
+    pub invalid: bool,
+
+    pub content: serde_json::Value,
+
+    pub status: i32,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub continues_ref_id: Option<PieceId>,
+
+    pub timeline_objects_string: String,
+
+    #[serde(default)]
+    pub to_be_queued: bool,
+
+    pub expected_playout_items: serde_json::Value,
+    pub expected_packages: serde_json::Value,
+
+    pub allow_direct_play: serde_json::Value,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+
+    #[serde(default)]
+    pub has_side_effects: bool,
+    #[serde(default)]
+    pub not_in_vision: bool,
 }
 impl<'a> DocWithId<'a, PieceId> for Piece {
     fn doc_id(&'a self) -> &'a PieceId {

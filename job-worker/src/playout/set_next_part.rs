@@ -173,7 +173,9 @@ pub async fn setNextPart(
                             block_take_until: None,
                             part_playout_timings: None,
                             reset: false,
-                            orphaned: crate::data_model::part_instance::PartInstanceOrphaned::No,
+                            orphaned: None,
+
+                            previous_part_end_state: None,
                         })
                         .map_err(|_| format!("Failed to create part instance"))?;
 

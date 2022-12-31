@@ -37,11 +37,11 @@ pub struct PartInstanceTimings {
     pub play_offset: Option<Duration>,
 }
 
-#[derive(Clone, Copy, PartialEq, Deserialize, Serialize, Default)]
+#[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum PartInstanceOrphaned {
-    #[default]
-    No,
+    #[serde(alias = "deleted")]
     Deleted,
+    #[serde(alias = "adlib-part")]
     AdlibPart,
     //  'adlib-part' | 'deleted'
 }
@@ -81,8 +81,9 @@ pub struct PartInstance {
     pub segment_playout_id: SegmentPlayoutId,
 
     pub part: Part,
-    #[serde(default)]
-    pub orphaned: PartInstanceOrphaned,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub orphaned: Option<PartInstanceOrphaned>,
 
     pub timings: PartInstanceTimings,
     #[serde(default)]
@@ -101,6 +102,9 @@ pub struct PartInstance {
     )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub block_take_until: Option<DateTime<Utc>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_part_end_state: Option<serde_json::Value>,
 }
 impl<'a> DocWithId<'a, PartInstanceId> for PartInstance {
     fn doc_id(&'a self) -> &'a PartInstanceId {

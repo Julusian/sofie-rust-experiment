@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -34,6 +36,23 @@ pub struct RundownPlaylist {
     #[serde(rename = "_id")]
     pub id: RundownPlaylistId,
 
+    pub external_id: String,
+
+    pub studio_id: String, // TODO - type
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub restored_from_snapshot_id: Option<RundownPlaylistId>,
+
+    pub name: String,
+
+    pub created: DateTime<Utc>,
+    pub modified: DateTime<Utc>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reset_time: Option<DateTime<Utc>>,
+
+    pub timing: serde_json::Value,
+
     pub activation_id: Option<RundownPlaylistActivationId>,
     #[serde(default)]
     pub rehearsal: bool,
@@ -56,9 +75,34 @@ pub struct RundownPlaylist {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub started_playback: Option<DateTime<Utc>>,
 
-    pub rundown_ids_in_order: Vec<RundownId>,
     #[serde(default, rename = "loop")]
     pub loop_: bool,
+
+    #[serde(default)]
+    pub out_of_order_timing: bool,
+    #[serde(default)]
+    pub time_of_day_countdowns: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub meta_data: Option<serde_json::Value>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_incorrect_part_playback_reported: Option<DateTime<Utc>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rundowns_started_playback: Option<HashMap<RundownId, DateTime<Utc>>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_take_time: Option<DateTime<Utc>>,
+
+    #[serde(default)]
+    pub rundown_ranks_are_set_in_sofie: bool,
+    pub rundown_ids_in_order: Vec<RundownId>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_persistent_state: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tracked_ab_sessions: Option<serde_json::Value>,
 }
 impl<'a> DocWithId<'a, RundownPlaylistId> for RundownPlaylist {
     fn doc_id(&'a self) -> &'a RundownPlaylistId {

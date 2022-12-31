@@ -84,13 +84,15 @@ pub fn calculatePartTimings(
     let mut allow_transition_piece = false;
     if !is_in_hold {
         if let Some(from_part) = from_part {
-            if let Some(autonext_overlap) = from_part.autonext_overlap {
+            if from_part.autonext {
                 // An auto-next with overlap is essentially a simple transition, so we treat it as one
                 allow_transition_piece = false;
                 in_transition = Some(PartInTransition {
                     block_take_duration: Duration::zero(),
                     part_content_delay_duration: Duration::zero(),
-                    previous_part_keepalive_duration: autonext_overlap,
+                    previous_part_keepalive_duration: from_part
+                        .autonext_overlap
+                        .unwrap_or(Duration::zero()),
                 });
             } else if !from_part.disable_next_in_transition {
                 allow_transition_piece = true;

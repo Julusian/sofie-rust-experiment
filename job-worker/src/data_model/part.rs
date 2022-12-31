@@ -1,12 +1,23 @@
-use std::cmp::Ordering;
-
 use chrono::Duration;
 use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
 
-use super::ids::{PartId, RundownId, SegmentId};
+use super::{
+    extra::{ITranslatableMessage, NoteBase, NoteSeverity},
+    ids::{PartId, PieceId, RundownId, SegmentId},
+};
+
+#[derive(Clone, Copy, PartialEq, Deserialize_repr, Serialize_repr, Default, Debug)]
+#[repr(u8)]
+pub enum PartHoldMode {
+    #[default]
+    NONE = 0,
+    FROM = 1,
+    TO = 2,
+}
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +40,28 @@ pub struct PartOutTransition {
     #[serde_as(as = "serde_with::DurationSeconds<i64>")]
     pub duration: Duration,
 }
+#[serde_as]
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PartInvalidReason {
+    pub message: ITranslatableMessage,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub severity: Option<NoteSeverity>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+}
+#[serde(rename_all = "camelCase")]
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PartNoteOrigin {
+    name: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    piece_id: Option<PieceId>,
+}
+
+pub type PartNote = NoteBase<PartNoteOrigin>;
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
@@ -42,7 +75,17 @@ pub struct Part {
     pub rundown_id: RundownId,
     pub segment_id: SegmentId,
 
-    // pub autonext: bool, Implied by autonext_overlap being defined
+    pub external_id: String,
+
+    pub title: String,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metaData: Option<serde_json::Value>,
+
+    #[serde(default)]
+    pub hold_mode: PartHoldMode,
+
+    pub autonext: bool,
     #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub autonext_overlap: Option<Duration>,
@@ -59,11 +102,46 @@ pub struct Part {
     #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_duration: Option<Duration>,
+    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_duration_with_preroll: Option<Duration>,
+
+    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub budget_duration: Option<Duration>,
 
     #[serde(default)]
     pub invalid: bool,
     #[serde(default)]
     pub floated: bool,
+
+    #[serde(default)]
+    pub gap: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invalid_reason: Option<PartInvalidReason>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub identifier: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notes: Option<Vec<PartNote>>,
+
+    #[serde(default)]
+    pub should_notify_current_playing_part: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub classes: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub classes_for_next: Option<Vec<String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_duration_group: Option<String>,
+    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_duration: Option<Duration>,
 }
 impl<'a> DocWithId<'a, PartId> for Part {
     fn doc_id(&'a self) -> &'a PartId {

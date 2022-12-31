@@ -27,7 +27,7 @@ use crate::{
 };
 
 use super::{
-    cache::{FakeDoc, PlayoutCache},
+    cache::PlayoutCache,
     infinites::{
         buildPastInfinitePiecesForThisPartQuery, getPieceInstancesForPart2,
         getPlayheadTrackingInfinitesForPart, processAndPrunePieceInstanceTimings,
@@ -95,9 +95,7 @@ fn getIdsBeforeThisPart(
 
     // Find any orphaned parts
     let part_instances_before_this_in_segment = cache.part_instances.find_some(|p| {
-        p.segment_id == next_part.segment_id
-            && p.orphaned == PartInstanceOrphaned::No
-            && p.part.rank < next_part.rank
+        p.segment_id == next_part.segment_id && p.orphaned.is_none() && p.part.rank < next_part.rank
     });
     parts_before_this_in_segment.extend(
         part_instances_before_this_in_segment

@@ -11,6 +11,7 @@ chrono = { version = "0.4.22", features = ["serde"] }
 futures = "0.3"
 mongodb = "2.3.1"
 serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 serde_with = { version = "2.1.0", features = ["chrono_0_4"] }
 serde_repr = "0.1.10"
 tokio = { version = "1.23.0", features = ["parking_lot", "macros"] } # TODO - should we have more things?

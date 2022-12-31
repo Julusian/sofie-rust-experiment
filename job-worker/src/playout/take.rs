@@ -609,6 +609,7 @@ fn start_hold(
                 piece: new_instance_piece,
                 reset: false,
                 disabled: false,
+                hidden: false,
                 adlib_source_id: None,
                 user_duration: None,
                 infinite: Some(PieceInstanceInfinite {
