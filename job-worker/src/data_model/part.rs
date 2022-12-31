@@ -24,20 +24,20 @@ pub enum PartHoldMode {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PartInTransition {
     /** Duration this transition block a take for. After this time, another take is allowed which may cut this transition off early */
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub block_take_duration: Duration,
     /** Duration the previous part be kept playing once the transition is started. Typically the duration of it remaining in-vision */
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub previous_part_keepalive_duration: Duration,
     /** Duration the pieces of the part should be delayed for once the transition starts. Typically the duration until the new part is in-vision */
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub part_content_delay_duration: Duration,
 }
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PartOutTransition {
     /** How long to keep this part alive after taken out  */
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub duration: Duration,
 }
 #[serde_as]
@@ -85,8 +85,11 @@ pub struct Part {
     #[serde(default)]
     pub hold_mode: PartHoldMode,
 
+    #[serde(default)]
     pub autonext: bool,
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub autonext_overlap: Option<Duration>,
 
@@ -99,14 +102,20 @@ pub struct Part {
     #[serde(default)]
     pub untimed: bool,
 
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_duration: Option<Duration>,
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expected_duration_with_preroll: Option<Duration>,
 
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub budget_duration: Option<Duration>,
 
@@ -139,7 +148,9 @@ pub struct Part {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_duration_group: Option<String>,
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_duration: Option<Duration>,
 }

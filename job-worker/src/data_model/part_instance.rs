@@ -32,16 +32,18 @@ pub struct PartInstanceTimings {
     )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub take: Option<DateTime<Utc>>,
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub play_offset: Option<Duration>,
 }
 
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum PartInstanceOrphaned {
-    #[serde(alias = "deleted")]
+    #[serde(rename = "deleted")]
     Deleted,
-    #[serde(alias = "adlib-part")]
+    #[serde(rename = "adlib-part")]
     AdlibPart,
     //  'adlib-part' | 'deleted'
 }
@@ -54,16 +56,18 @@ pub enum PartInstanceOrphaned {
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct PartCalculatedTimings {
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub in_transition_start: Option<Duration>, // The start time within the toPartGroup of the inTransition
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub to_part_delay: Duration, // How long after the start of toPartGroup should piece time 0 be
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub to_part_postroll: Duration,
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub from_part_remaining: Duration, // How long after the start of toPartGroup should fromPartGroup continue?
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub from_part_postroll: Duration,
 }
 
@@ -92,6 +96,8 @@ pub struct PartInstance {
     pub rehearsal: bool,
     #[serde(default)]
     pub reset: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub part_playout_timings: Option<PartCalculatedTimings>,
 
     #[serde(default)]

@@ -51,7 +51,9 @@ pub struct PieceInstance {
     )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dynamically_inserted: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub adlib_source_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub infinite: Option<PieceInstanceInfinite>,
 
     #[serde_as(

@@ -1,5 +1,6 @@
 use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
 
@@ -10,11 +11,11 @@ use super::{
 
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum RundownOrphaned {
-    #[serde(alias = "deleted")]
+    #[serde(rename = "deleted")]
     Deleted,
-    #[serde(alias = "from-snapshot")]
+    #[serde(rename = "from-snapshot")]
     FromSnapshot,
-    #[serde(alias = "manual")]
+    #[serde(rename = "manual")]
     Manual,
 }
 
@@ -26,6 +27,7 @@ pub struct RundownNoteOrigin {
 
 pub type RundownNote = NoteBase<RundownNoteOrigin>;
 
+#[serde_as]
 #[serde(rename_all = "camelCase")]
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Rundown {
@@ -57,7 +59,9 @@ pub struct Rundown {
     #[serde(default)]
     pub end_of_rundown_is_show_break: bool,
 
+    #[serde_as(as = "serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub created: DateTime<Utc>,
+    #[serde_as(as = "serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub modified: DateTime<Utc>,
 
     pub import_versions: serde_json::Value,

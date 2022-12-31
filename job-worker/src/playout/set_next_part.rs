@@ -211,14 +211,16 @@ pub async fn setNextPart(
             }
         };
 
-        // TODO
-        // let selected_part_instance_ids = Vec::with_capacity(3);
-        // 		const selectedPartInstanceIds = _.compact([
-        // 			newInstanceId,
-        // 			cache.Playlist.doc.currentPartInstanceId,
-        // 			cache.Playlist.doc.previousPartInstanceId,
-        // 		])
+        let mut selected_part_instance_ids = HashSet::with_capacity(3);
+        selected_part_instance_ids.insert(new_instance_id.clone());
+        if let Some(id) = &cache.playlist.doc().current_part_instance_id {
+            selected_part_instance_ids.insert(id.clone());
+        }
+        if let Some(id) = &cache.playlist.doc().previous_part_instance_id {
+            selected_part_instance_ids.insert(id.clone());
+        }
 
+        // TODO
         // 		// reset any previous instances of this part
         // 		resetPartInstancesWithPieceInstances(context, cache, {
         // 			_id: { $nin: selectedPartInstanceIds },
@@ -226,13 +228,23 @@ pub async fn setNextPart(
         // 			'part._id': nextPart._id,
         // 		})
 
-        // 		const nextPartInstanceTmp = nextPartInfo.type === 'partinstance' ? nextPartInfo.instance : null
-        // 		cache.Playlist.update((p) => {
-        // 			p.nextPartInstanceId = newInstanceId
-        // 			p.nextPartManual = !!(setManually || nextPartInstanceTmp?.orphaned)
-        // 			p.nextTimeOffset = nextTimeOffset || null
-        // 			return p
-        // 		})
+        let next_part_is_orphaned = match rawNextPart {
+            SetNextPartTarget::Part(_) => false,
+            SetNextPartTarget::PartInstance(p) => p.orphaned.is_some(),
+        };
+
+        cache
+            .playlist
+            .update(|doc| {
+                let mut res = doc.clone();
+
+                res.next_part_instance_id = Some(new_instance_id.clone());
+                res.next_part_manual = setManually || next_part_is_orphaned;
+                res.next_time_offset = nextTimeOffset;
+
+                Some(res)
+            })
+            .map_err(|_| format!("failed to set next part instance"))?;
     } else {
         // Set to null
 

@@ -8,6 +8,7 @@ use crate::data_model::{
 
 use super::cache::SegmentsAndParts;
 
+#[derive(Debug)]
 pub struct SelectNextPartResult {
     pub part_id: PartId,
     pub segment_id: SegmentId,

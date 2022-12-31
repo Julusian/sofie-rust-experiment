@@ -1,5 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 
 use crate::cache::doc::DocWithId;
 
@@ -11,10 +12,10 @@ use super::{
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize, Debug)]
 pub enum SegmentOrphaned {
     /** Segment is deleted from the NRCS but we still need it */
-    #[serde(alias = "deleted")]
+    #[serde(rename = "deleted")]
     DELETED, // = 'deleted',
     /** Segment should be hidden, but it is still playing */
-    #[serde(alias = "hidden")]
+    #[serde(rename = "hidden")]
     HIDDEN, // = 'hidden',
 }
 
@@ -26,6 +27,7 @@ pub struct SegmentNoteOrigin {
 
 pub type SegmentNote = NoteBase<SegmentNoteOrigin>;
 
+#[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Segment {
@@ -37,6 +39,8 @@ pub struct Segment {
     pub rundown_id: RundownId,
 
     pub external_id: String,
+
+    #[serde_as(as = "serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub external_modified: DateTime<Utc>,
 
     pub name: String,

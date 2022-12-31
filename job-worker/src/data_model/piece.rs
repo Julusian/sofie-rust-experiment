@@ -11,7 +11,10 @@ use super::ids::{PartId, PieceId, RundownId, SegmentId};
 #[derive(Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum PieceEnableStart {
-    Offset(#[serde_as(as = "serde_with::DurationSeconds<i64>")] Duration),
+    Offset(
+        #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
+        Duration,
+    ),
     // TODO - this is broken..
     Now,
 }
@@ -22,7 +25,9 @@ pub enum PieceEnableStart {
 pub struct PieceEnable {
     pub start: PieceEnableStart,
 
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<Duration>,
 }
@@ -30,27 +35,27 @@ pub struct PieceEnable {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum PieceLifespan {
     /** The Piece will only exist in it's designated Part. As soon as the playhead leaves the Part, the Piece will stop */
-    #[serde(alias = "part-only")]
+    #[serde(rename = "part-only")]
     WithinPart, // = 'part-only',
     /** The Piece will only exist in it's designated Segment. It will begin playing when taken and will stop when the
      * playhead leaves the Segment */
-    #[serde(alias = "segment-change")]
+    #[serde(rename = "segment-change")]
     OutOnSegmentChange, // = 'segment-change',
     /** The Piece will only exist in it's designated Segment. It will begin playing when taken and will stop when the
      * playhead leaves the Segment or the playhead moves before the beginning of the Piece */
-    #[serde(alias = "segment-end")]
+    #[serde(rename = "segment-end")]
     OutOnSegmentEnd, //= 'segment-end',
     /** The Piece will only exist in it's designated Rundown. It will begin playing when taken and will stop when the
      * playhead leaves the Rundown */
-    #[serde(alias = "rundown-change")]
+    #[serde(rename = "rundown-change")]
     OutOnRundownChange, // = 'rundown-change',
     /** The Piece will only exist in it's designated Rundown. It will begin playing when taken and will stop when the
      * playhead leaves the Rundown or the playhead moves before the beginning of the Piece */
-    #[serde(alias = "rundown-end")]
+    #[serde(rename = "rundown-end")]
     OutOnRundownEnd, //= 'rundown-end',
     /** The Piece will only exist while the ShowStyle doesn't change. It will begin playing when taken and will stop
      * when the playhead leaves the Rundown into a new Rundown with a different ShowStyle */
-    #[serde(alias = "showstyle-end")]
+    #[serde(rename = "showstyle-end")]
     OutOnShowStyleEnd, //= 'showstyle-end',
 }
 impl Into<bson::Bson> for PieceLifespan {
@@ -61,11 +66,11 @@ impl Into<bson::Bson> for PieceLifespan {
 
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize)]
 pub enum IBlueprintPieceType {
-    #[serde(alias = "normal")]
+    #[serde(rename = "normal")]
     Normal, // = 'normal',
-    #[serde(alias = "in-transition")]
+    #[serde(rename = "in-transition")]
     InTransition, // = 'in-transition',
-    #[serde(alias = "out-transition")]
+    #[serde(rename = "out-transition")]
     OutTransition, // = 'out-transition',
 }
 
@@ -88,10 +93,10 @@ pub struct Piece {
 
     pub enable: PieceEnable,
     pub lifespan: PieceLifespan,
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     #[serde(default = "Duration::zero")]
     pub preroll_duration: Duration,
-    #[serde_as(as = "serde_with::DurationSeconds<i64>")]
+    #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
     #[serde(default = "Duration::zero")]
     pub postroll_duration: Duration,
 
@@ -120,10 +125,13 @@ pub struct Piece {
     #[serde(default)]
     pub to_be_queued: bool,
 
-    pub expected_playout_items: serde_json::Value,
-    pub expected_packages: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_playout_items: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expected_packages: Option<serde_json::Value>,
 
-    pub allow_direct_play: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allow_direct_play: Option<serde_json::Value>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,

@@ -207,6 +207,7 @@ pub async fn take_next_part_inner(
 
             res.previous_part_instance_id = res.current_part_instance_id;
             res.current_part_instance_id = Some(take_part_instance.id.clone());
+            res.next_part_instance_id = None;
 
             res.hold_state = progress_hold_state(&doc.hold_state);
 

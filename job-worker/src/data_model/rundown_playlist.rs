@@ -45,9 +45,14 @@ pub struct RundownPlaylist {
 
     pub name: String,
 
+    #[serde_as(as = "serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub created: DateTime<Utc>,
+    #[serde_as(as = "serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>")]
     pub modified: DateTime<Utc>,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reset_time: Option<DateTime<Utc>>,
 
@@ -63,7 +68,9 @@ pub struct RundownPlaylist {
     pub next_part_instance_id: Option<PartInstanceId>,
     pub previous_part_instance_id: Option<PartInstanceId>,
     pub next_segment_id: Option<SegmentId>,
-    #[serde_as(as = "Option<serde_with::DurationSeconds<i64>>")]
+    #[serde_as(
+        as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_time_offset: Option<Duration>,
     #[serde(default)]
@@ -86,12 +93,18 @@ pub struct RundownPlaylist {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub meta_data: Option<serde_json::Value>,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_incorrect_part_playback_reported: Option<DateTime<Utc>>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rundowns_started_playback: Option<HashMap<RundownId, DateTime<Utc>>>,
 
+    #[serde_as(
+        as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
+    )]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_take_time: Option<DateTime<Utc>>,
 
