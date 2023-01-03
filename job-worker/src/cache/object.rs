@@ -121,7 +121,7 @@ impl<
     }
 }
 impl<
-        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize + PartialEq,
         Id: Clone + PartialEq + Eq + Hash + ProtectedId,
     > DbCacheWriteObject<T, Id> for DbCacheWriteObjectImpl<T, Id>
 {
@@ -145,10 +145,10 @@ impl<
 
         let new_doc = cb(&self.document);
         if let Some(new_doc) = new_doc {
-            // TODO - some equality check?
-
-            self.updated = true;
-            self.document = new_doc;
+            if new_doc != self.document {
+                self.updated = true;
+                self.document = new_doc;
+            }
 
             Ok(true)
         } else {

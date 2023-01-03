@@ -1,5 +1,5 @@
 use chrono::Duration;
-use mongodb::bson::{self, Document};
+use mongodb::bson;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
@@ -21,7 +21,7 @@ pub enum PieceEnableStart {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct PieceEnable {
     pub start: PieceEnableStart,
 
@@ -76,7 +76,7 @@ pub enum IBlueprintPieceType {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct Piece {
     #[serde(rename = "_id")]
     pub id: PieceId,

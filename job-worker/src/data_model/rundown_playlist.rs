@@ -31,7 +31,7 @@ pub fn progress_hold_state(input: &RundownHoldState) -> RundownHoldState {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct RundownPlaylist {
     #[serde(rename = "_id")]
     pub id: RundownPlaylistId,

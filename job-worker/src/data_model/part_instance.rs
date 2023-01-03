@@ -11,7 +11,7 @@ use super::{
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct PartInstanceTimings {
     #[serde_as(
         as = "Option<serde_with::TimestampMilliSeconds<i64, serde_with::formats::Flexible>>"
@@ -54,7 +54,7 @@ pub enum PartInstanceOrphaned {
  */
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct PartCalculatedTimings {
     #[serde_as(
         as = "Option<serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>>"
@@ -73,7 +73,7 @@ pub struct PartCalculatedTimings {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct PartInstance {
     #[serde(rename = "_id")]
     pub id: PartInstanceId,

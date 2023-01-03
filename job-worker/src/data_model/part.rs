@@ -21,7 +21,7 @@ pub enum PartHoldMode {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct PartInTransition {
     /** Duration this transition block a take for. After this time, another take is allowed which may cut this transition off early */
     #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
@@ -34,7 +34,7 @@ pub struct PartInTransition {
     pub part_content_delay_duration: Duration,
 }
 #[serde_as]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct PartOutTransition {
     /** How long to keep this part alive after taken out  */
     #[serde_as(as = "serde_with::DurationMilliSeconds<i64, serde_with::formats::Flexible>")]
@@ -42,7 +42,7 @@ pub struct PartOutTransition {
 }
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct PartInvalidReason {
     pub message: ITranslatableMessage,
 
@@ -53,7 +53,7 @@ pub struct PartInvalidReason {
     pub color: Option<String>,
 }
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct PartNoteOrigin {
     name: String,
 
@@ -65,7 +65,7 @@ pub type PartNote = NoteBase<PartNoteOrigin>;
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Part {
     #[serde(rename = "_id")]
     pub id: PartId,

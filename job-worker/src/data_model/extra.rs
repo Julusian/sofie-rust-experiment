@@ -8,7 +8,7 @@ pub fn get_piece_control_object_id(piece_instance_id: &PieceInstanceId) -> Strin
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ITranslatableMessage {
     pub key: String,
 
@@ -28,7 +28,7 @@ pub enum NoteSeverity {
 }
 
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct NoteBase<TOrigin> {
     #[serde(rename = "type")]
     pub _type: NoteSeverity,

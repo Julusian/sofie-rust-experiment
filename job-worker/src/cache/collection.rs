@@ -131,50 +131,43 @@ impl<
         collection: &MongoCollectionImpl<T, Id>,
     ) -> std::result::Result<(), String> {
         if !self.is_to_be_removed {
-            let mut updates = Vec::new();
             let mut removed_docs = Vec::new();
 
-            for (id, entry) in self.documents.iter_mut() {
-                if let Some(entry) = entry {
-                    if entry.inserted {
-                        let options = ReplaceOptions::builder().upsert(true).build();
+            let results = {
+                let mut updates = Vec::new();
+                for (id, entry) in self.documents.iter_mut() {
+                    if let Some(entry) = entry {
+                        if entry.inserted {
+                            let options = ReplaceOptions::builder().upsert(true).build();
 
-                        updates.push(collection.collection.replace_one(
-                            doc! {"_id": id.unprotect()},
-                            &entry.document,
-                            options,
-                        ));
-                    } else if entry.updated {
-                        let options = ReplaceOptions::builder().build();
+                            updates.push(collection.collection.replace_one(
+                                doc! {"_id": id.unprotect()},
+                                &entry.document,
+                                options,
+                            ));
+                        } else if entry.updated {
+                            let options = ReplaceOptions::builder().build();
 
-                        updates.push(collection.collection.replace_one(
-                            doc! {"_id": id.unprotect()},
-                            &entry.document,
-                            options,
-                        ));
+                            updates.push(collection.collection.replace_one(
+                                doc! {"_id": id.unprotect()},
+                                &entry.document,
+                                options,
+                            ));
+                        }
+
+                        entry.inserted = false;
+                        entry.updated = false;
+                        // 	}
+                    } else {
+                        removed_docs.push(id.clone());
                     }
-
-                    entry.inserted = false;
-                    entry.updated = false;
-                    // 	}
-                } else {
-                    removed_docs.push(id);
                 }
-            }
 
-            // if !removed_docs.is_empty() {
-            //     updates.push(collection.collection.delete_many(
-            //         doc! {
-            //             "_id": { "$in": removed_docs}
-            //         },
-            //         None,
-            //     ));
-            // }
-
-            let results = if !updates.is_empty() {
-                join_all(updates).await
-            } else {
-                vec![]
+                if !updates.is_empty() {
+                    join_all(updates).await
+                } else {
+                    vec![]
+                }
             };
 
             let mut errs = results
@@ -190,7 +183,7 @@ impl<
                     .collection
                     .delete_many(
                         doc! {
-                            "_id": { "$in": unprotect_refs_array(&removed_docs)}
+                            "_id": { "$in": unprotect_array(&removed_docs)}
                         },
                         None,
                     )
@@ -202,7 +195,7 @@ impl<
 
                 for id in removed_docs {
                     // TODO - fix this
-                    // self.documents.remove(id);
+                    self.documents.remove(&id);
                 }
             }
 
@@ -277,7 +270,7 @@ impl<
     }
 }
 impl<
-        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize,
+        T: for<'a> DocWithId<'a, Id> + for<'de> Deserialize<'de> + Serialize + PartialEq,
         Id: Clone + PartialEq + Eq + Hash + ProtectedId,
     > DbCacheWriteCollection<T, Id> for DbCacheWriteCollectionImpl<T, Id>
 {
@@ -382,8 +375,10 @@ impl<
                         return Err(CacheCollectionError::IdMismatch(id.clone()));
                     }
 
-                    // TODO - some equality check?
-                    doc.document = new_doc;
+                    if doc.document != new_doc {
+                        doc.document = new_doc;
+                        doc.updated = true;
+                    }
 
                     Ok(true)
                 } else {
@@ -410,9 +405,11 @@ impl<
                         return Err(CacheCollectionError::IdMismatch(entry.0.clone()));
                     }
 
-                    // TODO - some equality check?
-                    doc.document = new_doc;
-                    updated.push(entry.0.clone());
+                    if doc.document != new_doc {
+                        doc.document = new_doc;
+                        doc.updated = true;
+                        updated.push(entry.0.clone());
+                    }
                 }
             }
         }

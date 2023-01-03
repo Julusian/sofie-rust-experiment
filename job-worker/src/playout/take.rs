@@ -432,7 +432,6 @@ pub fn updatePartInstanceOnTake(
 ) -> Result<(), String> {
     let playlist = cache.playlist.doc();
 
-    todo!();
     // 	// TODO - the state could change after this sampling point. This should be handled properly
     // 	let previousPartEndState: PartEndState | undefined = undefined
     // 	if (blueprint.blueprint.getEndStateForPart && currentPartInstance) {

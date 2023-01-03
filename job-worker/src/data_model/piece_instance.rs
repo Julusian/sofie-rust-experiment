@@ -13,7 +13,7 @@ use super::{
 };
 
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct PieceInstanceInfinite {
     pub infinite_instance_id: PieceInstanceInfiniteId,
     pub infinite_instance_index: usize,
@@ -28,7 +28,7 @@ pub struct PieceInstanceInfinite {
 
 #[serde_as]
 #[serde(rename_all = "camelCase")]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, PartialEq)]
 pub struct PieceInstance {
     #[serde(rename = "_id")]
     pub id: PieceInstanceId,
