@@ -42,7 +42,6 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
     for segment in segments {
         // If the segment is orphaned and not the segment for the next or current partinstance
         if !selectedPartInstancesSegmentIds.contains(&segment.id) {
-            // todo!()
             let rundown_segments_entry =
                 alterSegmentsFromRundowns.entry(segment.rundown_id.clone());
             let rundown_segments = match rundown_segments_entry {

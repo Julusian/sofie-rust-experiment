@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use chrono::Duration;
 use itertools::Itertools;
@@ -709,7 +712,7 @@ pub enum ResolvedEndCap {
 
 #[derive(Clone)]
 pub struct PieceInstanceWithTimings {
-    pub piece: PieceInstance,
+    pub piece: Rc<PieceInstance>,
     /**
      * This is a maximum end point of the pieceInstance.
      * If the pieceInstance also has a enable.duration or userDuration set then the shortest one will need to be used
@@ -927,19 +930,17 @@ fn update_with_new_pieces(
             active_piece.resolved_end_cap = getPieceStartTime(new_pieces_start, &new_piece.piece);
         }
 
-        // TODO - we can't clone new_piece. doing that makes this logic super broken
-
         // track the new piece
-        active_pieces.insert(key.clone(), new_piece.clone());
+        let new_piece_tmp = new_piece.clone();
+        active_pieces.insert(key.clone(), new_piece);
 
         // We don't want to include virtual pieces in the output (most of the time)
         // TODO - do we want to always output virtual pieces from the 'other' group?
         if include_virtual
-            || ((!is_clear(&new_piece.piece) || key == PieceInstanceOnInfiniteLayersKeys::other)
-                && !is_capped_by_avirtual(active_pieces, &key, &new_piece.piece))
+            || ((!is_clear(&new_piece_tmp.piece)
+                || key == PieceInstanceOnInfiniteLayersKeys::other)
+                && !is_capped_by_avirtual(active_pieces, &key, &new_piece_tmp.piece))
         {
-            results.push(new_piece.clone());
-
             if key == PieceInstanceOnInfiniteLayersKeys::onSegmentEnd
                 || (key == PieceInstanceOnInfiniteLayersKeys::onRundownEnd
                     && !active_pieces
@@ -953,15 +954,17 @@ fn update_with_new_pieces(
                     active_pieces.get_mut(&PieceInstanceOnInfiniteLayersKeys::other)
                 {
                     if new_pieces_start != &PieceEnableStart::Offset(Duration::zero())
-                        || isCandidateBetterToBeContinued(&active_other.piece, &new_piece.piece)
+                        || isCandidateBetterToBeContinued(&active_other.piece, &new_piece_tmp.piece)
                     {
                         // These modes should stop the 'other' when they start if not hidden behind a higher priority onEnd
                         active_other.resolved_end_cap =
-                            getPieceStartTime(new_pieces_start, &new_piece.piece);
+                            getPieceStartTime(new_pieces_start, &new_piece_tmp.piece);
                         active_pieces.remove(&PieceInstanceOnInfiniteLayersKeys::other);
                     }
                 }
             }
+
+            results.push(new_piece_tmp);
         }
     }
 }
@@ -1045,7 +1048,7 @@ fn find_piece_instances_on_infinite_layers(
                     res.insert(
                         PieceInstanceOnInfiniteLayersKeys::onShowStyleEnd,
                         PieceInstanceWithTimings {
-                            piece: (*piece).clone(),
+                            piece: Rc::new((*piece).clone()),
                             resolved_end_cap: ResolvedEndCap::None,
                             priority: 0,
                         },
@@ -1060,7 +1063,7 @@ fn find_piece_instances_on_infinite_layers(
                     res.insert(
                         PieceInstanceOnInfiniteLayersKeys::onRundownEnd,
                         PieceInstanceWithTimings {
-                            piece: (*piece).clone(),
+                            piece: Rc::new((*piece).clone()),
                             resolved_end_cap: ResolvedEndCap::None,
                             priority: 1,
                         },
@@ -1075,7 +1078,7 @@ fn find_piece_instances_on_infinite_layers(
                     res.insert(
                         PieceInstanceOnInfiniteLayersKeys::onSegmentEnd,
                         PieceInstanceWithTimings {
-                            piece: (*piece).clone(),
+                            piece: Rc::new((*piece).clone()),
                             resolved_end_cap: ResolvedEndCap::None,
                             priority: 2,
                         },
@@ -1092,7 +1095,7 @@ fn find_piece_instances_on_infinite_layers(
                     res.insert(
                         PieceInstanceOnInfiniteLayersKeys::other,
                         PieceInstanceWithTimings {
-                            piece: (*piece).clone(),
+                            piece: Rc::new((*piece).clone()),
                             resolved_end_cap: ResolvedEndCap::None,
                             priority: 5,
                         },

@@ -331,7 +331,7 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                 &current_part_instance,
                 &pruned_piece_instances
                     .into_iter()
-                    .map(|p| p.piece)
+                    .map(|p| (*p.piece).clone())
                     .collect_vec(),
                 &rundown,
                 &next_part_instance.part,

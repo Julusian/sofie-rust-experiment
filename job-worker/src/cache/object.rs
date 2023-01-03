@@ -36,7 +36,6 @@ pub trait DbCacheWriteObject<
     fn mark_for_removal(&mut self);
 
     fn discard_changes(&mut self);
-    fn update_database_with_data(&mut self) -> Result<()>;
 
     fn update<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<bool>;
 }
@@ -139,9 +138,6 @@ impl<
             self.updated = false;
             self.document = self.document_raw.clone();
         }
-    }
-    fn update_database_with_data(&mut self) -> Result<()> {
-        Err(CacheObjectError::NotImplemented)
     }
 
     fn update<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<bool> {

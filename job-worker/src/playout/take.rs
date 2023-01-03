@@ -432,6 +432,7 @@ pub fn updatePartInstanceOnTake(
 ) -> Result<(), String> {
     let playlist = cache.playlist.doc();
 
+    todo!();
     // 	// TODO - the state could change after this sampling point. This should be handled properly
     // 	let previousPartEndState: PartEndState | undefined = undefined
     // 	if (blueprint.blueprint.getEndStateForPart && currentPartInstance) {
@@ -499,7 +500,7 @@ pub fn updatePartInstanceOnTake(
                 .as_ref()
                 .map_or(true, |inf| inf.infinite_instance_index == 0)
         })
-        .map(|p| p.piece.piece)
+        .map(|p| (*p.piece).piece.clone())
         .collect::<Vec<_>>();
 
     let part_playout_timings = calculatePartTimings(
@@ -664,8 +665,8 @@ async fn complete_hold(
             .get_current_part_instance()
             .ok_or_else(|| format!("currentPart not found!"))?;
 
+        todo!();
         // Clear the current extension line
-        // TODO
         // innerStopPieces(
         // 	context,
         // 	cache,
@@ -676,7 +677,7 @@ async fn complete_hold(
         // )
     }
 
-    // TODO
+    todo!();
     // await updateTimeline(context, cache)
 
     Ok(())

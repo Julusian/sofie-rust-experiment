@@ -72,7 +72,6 @@ pub trait DbCacheWriteCollection<
     fn remove_by_filter<F: Fn(&T) -> bool>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
 
     fn discard_changes(&mut self);
-    fn update_database_with_data(&mut self) -> Result<(), Id>;
 
     fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &Id, cb: F) -> Result<bool, Id>;
     fn update_all<F: Fn(&T) -> Option<T>>(&mut self, cb: F) -> Result<Vec<Id>, Id>;
@@ -369,11 +368,6 @@ impl<
                 );
             }
         }
-    }
-
-    fn update_database_with_data(&mut self) -> Result<(), Id> {
-        // TODO
-        Err(CacheCollectionError::NotImplemented)
     }
 
     fn update_one<F: Fn(&T) -> Option<T>>(&mut self, id: &Id, cb: F) -> Result<bool, Id> {
