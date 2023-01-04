@@ -30,7 +30,7 @@ pub fn buildPastInfinitePiecesForThisPartQuery(
 ) -> Option<bson::Document> {
     let mut fragments = Vec::with_capacity(3);
 
-    if partsIdsBeforeThisInSegment.len() > 0 {
+    if !partsIdsBeforeThisInSegment.is_empty() {
         fragments.push(doc! {
             // same segment, and previous part
             "lifespan": {
@@ -48,7 +48,7 @@ pub fn buildPastInfinitePiecesForThisPartQuery(
         });
     }
 
-    if segmentsIdsBeforeThisInRundown.len() > 0 {
+    if !segmentsIdsBeforeThisInRundown.is_empty() {
         fragments.push(doc! {
             // same rundown, and previous segment
             "lifespan": {
@@ -63,7 +63,7 @@ pub fn buildPastInfinitePiecesForThisPartQuery(
         });
     }
 
-    if rundownIdsBeforeThisInPlaylist.len() > 0 {
+    if !rundownIdsBeforeThisInPlaylist.is_empty() {
         fragments.push(doc! {
             // previous rundown
             "lifespan": {
@@ -75,7 +75,7 @@ pub fn buildPastInfinitePiecesForThisPartQuery(
         })
     }
 
-    if fragments.len() == 0 {
+    if fragments.is_empty() {
         None
     } else if fragments.len() == 1 {
         let mut res = doc! {
@@ -133,7 +133,7 @@ pub fn getPlayheadTrackingInfinitesForPart(
         grouped
     };
 
-    for (source_layer_id, pieceInstances) in groupedPlayingPieceInstances {
+    for (_source_layer_id, pieceInstances) in groupedPlayingPieceInstances {
         // Find the ones that starts last. Note: any piece will stop an onChange
         let lastPiecesByStart = {
             let mut grouped: HashMap<PieceEnableStart, Vec<&PieceInstance>> = HashMap::new();
@@ -173,7 +173,7 @@ pub fn getPlayheadTrackingInfinitesForPart(
 
                 if let Some(largest) = largest {
                     if let Some(pieces) =
-                        lastPiecesByStart.get(&PieceEnableStart::Offset(largest.clone()))
+                        lastPiecesByStart.get(&PieceEnableStart::Offset(*largest))
                     {
                         pieces.clone()
                     } else {
@@ -237,7 +237,7 @@ pub fn getPlayheadTrackingInfinitesForPart(
                         if let Some(group_vec) = grouped.get_mut(&piece.piece.lifespan) {
                             group_vec.push(piece);
                         } else {
-                            grouped.insert(piece.piece.lifespan.clone(), vec![piece]);
+                            grouped.insert(piece.piece.lifespan, vec![piece]);
                         }
                     }
                 }
@@ -393,14 +393,14 @@ fn markPieceInstanceAsContinuation(previousInstance: &PieceInstance, instance: &
 }
 
 pub fn isPiecePotentiallyActiveInPart(
-    previousPartInstance: Option<&PartInstance>,
-    partsBeforeThisInSegment: &HashSet<PartId>,
-    segmentsBeforeThisInRundown: &HashSet<SegmentId>,
-    rundownsBeforeThisInPlaylist: &[RundownId],
-    rundownsToShowstyles: &HashMap<RundownId, ShowStyleBaseId>,
-    rundown: &Rundown,
-    part: &Part,
-    pieceToCheck: &Piece,
+    _previousPartInstance: Option<&PartInstance>,
+    _partsBeforeThisInSegment: &HashSet<PartId>,
+    _segmentsBeforeThisInRundown: &HashSet<SegmentId>,
+    _rundownsBeforeThisInPlaylist: &[RundownId],
+    _rundownsToShowstyles: &HashMap<RundownId, ShowStyleBaseId>,
+    _rundown: &Rundown,
+    _part: &Part,
+    _pieceToCheck: &Piece,
 ) -> bool {
     // 	// If its from the current part
     // 	if (pieceToCheck.startPartId === part._id) {
@@ -568,21 +568,18 @@ pub fn getPieceInstancesForPart2(
                     piecesOnSourceLayers.entry(candidatePiece.source_layer_id.clone());
 
                 let pieceSet = match pieceSetEntry {
-                    std::collections::hash_map::Entry::Occupied(mut entry) => entry.into_mut(),
+                    std::collections::hash_map::Entry::Occupied(entry) => entry.into_mut(),
                     std::collections::hash_map::Entry::Vacant(entry) => {
                         entry.insert(InfinitePieceSet::default())
                     }
                 };
 
                 if pieceSet
-                    .get_piece(candidatePiece.lifespan)
-                    .and_then(|existingPiece| {
-                        Some(doesPieceAStartBeforePieceB(
+                    .get_piece(candidatePiece.lifespan).map(|existingPiece| doesPieceAStartBeforePieceB(
                             orderedPartIds,
                             existingPiece,
                             candidatePiece,
                         ))
-                    })
                     .unwrap_or(true)
                 {
                     pieceSet.set_piece(candidatePiece.lifespan, candidatePiece.clone());
@@ -615,8 +612,7 @@ pub fn getPieceInstancesForPart2(
 
     let playingPieceInstancesMap = normalizeArrayToMapOfRefs(playingPieceInstances, |p| {
         p.infinite
-            .as_ref()
-            .and_then(|inf| Some(inf.infinite_piece_id.clone()))
+            .as_ref().map(|inf| inf.infinite_piece_id.clone())
     });
 
     let wrap_piece = |p: Piece| {
@@ -637,12 +633,10 @@ pub fn getPieceInstancesForPart2(
 
             let mut instance_infinite = PieceInstanceInfinite {
                 infinite_instance_id: existingPiece
-                    .and_then(|p| p.infinite.as_ref())
-                    .and_then(|inf| Some(inf.infinite_instance_id.clone()))
+                    .and_then(|p| p.infinite.as_ref()).map(|inf| inf.infinite_instance_id.clone())
                     .unwrap_or_else(|| PieceInstanceInfiniteId::new_from(get_random_id())),
                 infinite_instance_index: existingPiece
-                    .and_then(|p| p.infinite.as_ref())
-                    .and_then(|inf| Some(inf.infinite_instance_index + 1))
+                    .and_then(|p| p.infinite.as_ref()).map(|inf| inf.infinite_instance_index + 1)
                     .unwrap_or(0),
                 infinite_piece_id: instance.piece.id.clone(),
                 from_previous_part: false, // Set below
@@ -759,17 +753,11 @@ fn is_capped_by_avirtual(
             })
     {
         true
-    } else if key == &PieceInstanceOnInfiniteLayersKeys::onShowStyleEnd
-        && active_pieces
+    } else { key == &PieceInstanceOnInfiniteLayersKeys::onShowStyleEnd && active_pieces
             .get(&PieceInstanceOnInfiniteLayersKeys::onRundownEnd)
             .map_or(false, |piece| {
                 is_candidate_more_important(new_piece, &piece.piece).unwrap_or(false)
-            })
-    {
-        true
-    } else {
-        false
-    }
+            }) }
 }
 
 /**
@@ -788,11 +776,7 @@ pub fn processAndPrunePieceInstanceTimings(
     let exclusive_group_map: HashMap<String, String> = source_layers
         .iter()
         .filter_map(|(id, sl)| {
-            if let Some(exclusive_group) = &sl.exclusive_group {
-                Some((id.clone(), exclusive_group.clone()))
-            } else {
-                None
-            }
+            sl.exclusive_group.as_ref().map(|exclusive_group| (id.clone(), exclusive_group.clone()))
         })
         .collect();
 

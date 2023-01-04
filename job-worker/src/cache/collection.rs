@@ -5,10 +5,10 @@ use futures::future::join_all;
 use mongodb::bson::doc;
 use mongodb::options::ReplaceOptions;
 use serde::{Deserialize, Serialize};
-use tokio::join;
+
 
 use crate::context::direct_collections::MongoCollectionImpl;
-use crate::data_model::ids::{unprotect_array, unprotect_refs_array, ProtectedId};
+use crate::data_model::ids::{unprotect_array, ProtectedId};
 
 use super::doc::DocWithId;
 
@@ -223,11 +223,7 @@ impl<
         self.documents
             .iter()
             .filter_map(|doc| {
-                if let Some(doc) = doc.1 {
-                    Some(&doc.document)
-                } else {
-                    None
-                }
+                doc.1.as_ref().map(|doc| &doc.document)
             })
             .cloned()
             .collect()
@@ -248,11 +244,7 @@ impl<
     fn find_one_by_id(&self, id: &Id) -> Option<T> {
         let doc = self.documents.get(id);
         if let Some(doc) = doc {
-            if let Some(doc) = doc {
-                Some(doc.document.clone())
-            } else {
-                None
-            }
+            doc.as_ref().map(|doc| doc.document.clone())
         } else {
             None
         }

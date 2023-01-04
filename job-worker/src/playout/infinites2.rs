@@ -16,7 +16,7 @@ use crate::{
     data_model::{
         ids::{PartId, PartInstanceId, ProtectedId, RundownId, SegmentId},
         part::Part,
-        part_instance::{PartInstance, PartInstanceOrphaned},
+        part_instance::{PartInstance},
         piece::Piece,
         piece_instance::PieceInstance,
         rundown::Rundown,
@@ -116,7 +116,7 @@ fn getIdsBeforeThisPart(
                 .map(|s| s.id)
                 .collect::<Vec<_>>()
         })
-        .unwrap_or_else(|| Vec::new());
+        .unwrap_or_else(Vec::new);
 
     let sorted_rundown_ids = sortRundownIDsInPlaylist(
         &cache.playlist.doc().rundown_ids_in_order,
@@ -127,7 +127,7 @@ fn getIdsBeforeThisPart(
         .position(|r| r == &next_part.rundown_id);
 
     let rundowns_before_this_in_playlist = current_rundown_index.map_or_else(
-        || Vec::new(),
+        Vec::new,
         |index| sorted_rundown_ids.into_iter().take(index).collect(),
     );
 
@@ -184,8 +184,8 @@ pub async fn fetchPiecesThatMayBeActiveForPart(
             &Vec::new(), // other rundowns don't exist in the ingestCache
         );
         let mut this_rundown_pieces: Vec<Piece> =
-            if let Some(this_rundown_piece_query) = thisRundownPieceQuery {
-                unsaved_ingest_cache.pieces.find_some(|p| todo!())
+            if let Some(_this_rundown_piece_query) = thisRundownPieceQuery {
+                unsaved_ingest_cache.pieces.find_some(|_p| todo!())
             } else {
                 Vec::new()
             };
@@ -212,10 +212,10 @@ pub async fn fetchPiecesThatMayBeActiveForPart(
         let mut all_pieces = results.0?;
         let mut previous_rundown_pieces = results.1?;
 
-        if this_rundown_pieces.len() > 0 {
+        if !this_rundown_pieces.is_empty() {
             all_pieces.append(&mut this_rundown_pieces);
         }
-        if previous_rundown_pieces.len() > 0 {
+        if !previous_rundown_pieces.is_empty() {
             all_pieces.append(&mut previous_rundown_pieces);
         }
 
@@ -244,7 +244,7 @@ pub async fn fetchPiecesThatMayBeActiveForPart(
         let mut all_pieces = results.0?;
         let mut infinites = results.1?;
 
-        if infinites.len() > 0 {
+        if !infinites.is_empty() {
             all_pieces.append(&mut infinites);
         }
 
@@ -284,7 +284,7 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
             let show_style_base = context
                 .get_show_style_base(&rundown.show_style_base_id)
                 .await?
-                .ok_or(format!("ShowStyleBase not found"))?;
+                .ok_or("ShowStyleBase not found".to_string())?;
 
             let ordered_parts_and_segments = cache.get_ordered_segments_and_parts();
 
@@ -351,7 +351,7 @@ pub async fn syncPlayheadInfinitesForNextPartInstance(
                     },
                     infinites,
                 )
-                .map_err(|_e| format!("Failed to save new infinites"))?;
+                .map_err(|_e| "Failed to save new infinites".to_string())?;
 
             Ok(())
         }
@@ -413,7 +413,7 @@ pub fn getPieceInstancesForPart(
         ),
         &ids_before_next_part.rundowns_before_this_in_playlist,
         &rundown_ids_to_showstyle_ids,
-        &possible_pieces,
+        possible_pieces,
         &ordered_parts_and_segments
             .parts
             .into_iter()

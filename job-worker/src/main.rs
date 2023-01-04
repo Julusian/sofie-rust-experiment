@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use chrono::Utc;
-use data_model::ids::PartId;
+
 use mongodb::{bson::doc, options::ClientOptions, Client};
 use tokio::time::sleep;
 
@@ -10,7 +10,7 @@ use crate::{
         context::JobContext,
         direct_collections::{DirectCollections, MongoReadOnlyCollection},
     },
-    data_model::ids::{ProtectedId, RundownPlaylistId},
+    data_model::ids::{ProtectedId},
     playout::{cache::PlayoutCache, take::take_next_part_inner},
 };
 

@@ -69,7 +69,7 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
     }
 
     // We need to run this outside of the current lock, and within an ingest lock, so defer to the work queue
-    for (rundownId, candidateSegmentIds) in alterSegmentsFromRundowns {
+    for (rundownId, _candidateSegmentIds) in alterSegmentsFromRundowns {
         let rundown = cache.rundowns.find_one_by_id(&rundownId);
         if let Some(rundown) = rundown {
             if rundown.restored_from_snapshot_id.is_some() {
@@ -95,8 +95,8 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
         .part_instances
         .find_some(|p| p.orphaned == Some(PartInstanceOrphaned::Deleted) && !p.reset);
     for partInstance in orphanedInstances {
-        if (PRESERVE_UNSYNCED_PLAYING_SEGMENT_CONTENTS
-            && orphanedSegmentIds.contains(&partInstance.segment_id))
+        if PRESERVE_UNSYNCED_PLAYING_SEGMENT_CONTENTS
+            && orphanedSegmentIds.contains(&partInstance.segment_id)
         {
             // If the segment is also orphaned, then don't delete it until it is clear
             continue;
@@ -110,7 +110,7 @@ pub async fn cleanupOrphanedItems(context: &JobContext, cache: &mut PlayoutCache
     }
 
     // Cleanup any instances from above
-    if removePartInstanceIds.len() > 0 {
+    if !removePartInstanceIds.is_empty() {
         resetPartInstancesWithPieceInstances(context, cache, "AA".to_string()); //{ _id: { $in: removePartInstanceIds } })
     }
 }
@@ -126,9 +126,9 @@ struct AlterOrphanedSegmentIds {
  * @param selector if not provided, all partInstances will be reset
  */
 pub fn resetPartInstancesWithPieceInstances(
-    context: &JobContext,
-    cache: &mut PlayoutCache,
-    selector: String, // MongoQuery<DBPartInstance>
+    _context: &JobContext,
+    _cache: &mut PlayoutCache,
+    _selector: String, // MongoQuery<DBPartInstance>
 ) {
     todo!()
     // const partInstancesToReset = cache.PartInstances.updateAll((p) => {

@@ -22,7 +22,7 @@ impl JobContext {
 
     pub async fn get_show_style_compound(
         &self,
-        variant_id: &ShowStyleVariantId,
+        _variant_id: &ShowStyleVariantId,
         base_id: &ShowStyleBaseId,
     ) -> Result<Option<ShowStyleBase>, String> {
         // TODO - properly
@@ -38,12 +38,10 @@ impl JobContext {
             .find_one_by_id(base_id, None)
             .await?;
 
-        Ok(db_show_style.and_then(|show_style| {
-            Some(ShowStyleBase {
+        Ok(db_show_style.map(|show_style| ShowStyleBase {
                 id: show_style.id,
                 source_layers: show_style.source_layers_with_overrides.defaults, // TODO - respect overrides
-            })
-        }))
+            }))
     }
 }
 

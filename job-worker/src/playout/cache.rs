@@ -79,7 +79,7 @@ impl PlayoutCache {
                 playlist.previous_part_instance_id.clone(),
             ]
             .into_iter()
-            .filter_map(|v| unprotect_optional(v))
+            .filter_map(unprotect_optional)
             .collect::<Vec<_>>();
 
             let rundown_ids = rundowns

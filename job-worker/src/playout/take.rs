@@ -105,7 +105,7 @@ pub async fn take_next_part_inner(
             }
         }
 
-        if is_too_close_to_autonext(&current_part_instance, true) {
+        if is_too_close_to_autonext(current_part_instance, true) {
             return Err("TakeCloseToAutonext".to_string());
         }
     }
@@ -116,7 +116,7 @@ pub async fn take_next_part_inner(
             res.hold_state = RundownHoldState::NONE;
             Some(res)
         });
-        if let Err(err) = err {
+        if let Err(_err) = err {
             println!("Failed to update PartInstance")
         }
 
@@ -124,7 +124,7 @@ pub async fn take_next_part_inner(
     } else if cache.playlist.doc().hold_state == RundownHoldState::ACTIVE {
         let show_style = p_show_style
             .await?
-            .ok_or(format!("ShowStyleCompound not found"))?;
+            .ok_or("ShowStyleCompound not found".to_string())?;
 
         complete_hold(cache, &show_style).await?;
 
@@ -150,11 +150,11 @@ pub async fn take_next_part_inner(
                 None
             }
         })
-        .map_err(|_| format!("Failed to clear plannedStartedPlayback"))?;
+        .map_err(|_| "Failed to clear plannedStartedPlayback".to_string())?;
 
     // it is only a first take if the Playlist has no startedPlayback and the taken PartInstance is not untimed
-    let is_first_time =
-        !cache.playlist.doc().started_playback.is_some() && !take_part_instance.part.untimed;
+    let _is_first_time =
+        cache.playlist.doc().started_playback.is_none() && !take_part_instance.part.untimed;
 
     clear_next_segment_id(cache, &take_part_instance)?;
 
@@ -168,7 +168,7 @@ pub async fn take_next_part_inner(
 
     let show_style = p_show_style
         .await?
-        .ok_or(format!("ShowStyleCompound not found"))?;
+        .ok_or("ShowStyleCompound not found".to_string())?;
     // 	const blueprint = await context.getShowStyleBlueprint(showStyle._id)
     // 	if (blueprint.blueprint.onPreTake) {
     // 		const span = context.startSpan('blueprint.onPreTake')
@@ -235,7 +235,7 @@ pub async fn take_next_part_inner(
     setNextPart(
         &context,
         cache,
-        next_part.map(|p| SetNextPartTarget::Part(p)),
+        next_part.map(SetNextPartTarget::Part),
         false,
         None,
     )
@@ -246,7 +246,7 @@ pub async fn take_next_part_inner(
         && cache.playlist.doc().hold_state == RundownHoldState::ACTIVE
     {
         let hold_from_part_instance =
-            &current_part_instance.ok_or_else(|| format!("previousPart not found!"))?;
+            &current_part_instance.ok_or_else(|| "previousPart not found!".to_string())?;
 
         start_hold(
             cache,
@@ -422,15 +422,15 @@ pub fn reset_previous_segment(cache: &mut PlayoutCache) -> Result<(), String> {
 // }
 
 pub fn updatePartInstanceOnTake(
-    context: &JobContext,
+    _context: &JobContext,
     cache: &mut PlayoutCache,
     show_style: &ShowStyleBase,
     // 	blueprint: ReadonlyDeep<WrappedShowStyleBlueprint>,
-    take_rundown: &Rundown,
+    _take_rundown: &Rundown,
     take_part_instance: &PartInstance,
     current_part_instance: Option<&PartInstance>,
 ) -> Result<(), String> {
-    let playlist = cache.playlist.doc();
+    let _playlist = cache.playlist.doc();
 
     // 	// TODO - the state could change after this sampling point. This should be handled properly
     // 	let previousPartEndState: PartEndState | undefined = undefined
@@ -505,7 +505,7 @@ pub fn updatePartInstanceOnTake(
     let part_playout_timings = calculatePartTimings(
         cache.playlist.doc().hold_state,
         from_part,
-        from_pieces.as_ref().map(|v| v.as_slice()),
+        from_pieces.as_deref(),
         &take_part_instance.part,
         &to_pieces,
     );
@@ -524,7 +524,7 @@ pub fn updatePartInstanceOnTake(
 
             Some(res)
         })
-        .map_err(|_| format!("Failed to update taken part instance"))?;
+        .map_err(|_| "Failed to update taken part instance".to_string())?;
 
     Ok(())
 }
@@ -594,7 +594,7 @@ fn start_hold(
 
                     Some(res)
                 })
-                .map_err(|_| format!("Failed to make held piece infinite"))?;
+                .map_err(|_| "Failed to make held piece infinite".to_string())?;
 
             // make the extension
             let mut new_instance_piece = instance.piece.clone();
@@ -614,7 +614,7 @@ fn start_hold(
                 adlib_source_id: None,
                 user_duration: None,
                 infinite: Some(PieceInstanceInfinite {
-                    infinite_instance_id: infinite_instance_id,
+                    infinite_instance_id,
                     infinite_instance_index: 1,
                     infinite_piece_id: instance.piece.id.clone(),
                     from_previous_part: true,
@@ -638,7 +638,7 @@ fn start_hold(
             cache
                 .piece_instances
                 .replace_one(new_instance)
-                .map_err(|_| format!("Failed to insert held piece"))?;
+                .map_err(|_| "Failed to insert held piece".to_string())?;
         }
     }
     Ok(())
@@ -657,12 +657,12 @@ async fn complete_hold(
 
             Some(res)
         })
-        .map_err(|_| format!("Failed to mark hold completed"))?;
+        .map_err(|_| "Failed to mark hold completed".to_string())?;
 
     if cache.playlist.doc().current_part_instance_id.is_some() {
-        let current_part_instance = cache
+        let _current_part_instance = cache
             .get_current_part_instance()
-            .ok_or_else(|| format!("currentPart not found!"))?;
+            .ok_or_else(|| "currentPart not found!".to_string())?;
 
         todo!();
         // Clear the current extension line

@@ -57,7 +57,7 @@ pub async fn setNextPart(
         let new_instance_id = match &rawNextPart {
             SetNextPartTarget::PartInstance(instance) => {
                 if instance.part.invalid {
-                    return Err(format!("Part is marked as invalid, cannot set as next."));
+                    return Err("Part is marked as invalid, cannot set as next.".to_string());
                 } else if !rundownIds.contains(&instance.rundown_id) {
                     return Err(format!(
                         "PartInstance \"{}\" of rundown \"{}\" not part of RundownPlaylist \"{}\"",
@@ -76,7 +76,7 @@ pub async fn setNextPart(
 
                         Some(res)
                     })
-                    .map_err(|_| format!("Failed to reuse part instance"))?;
+                    .map_err(|_| "Failed to reuse part instance".to_string())?;
 
                 syncPlayheadInfinitesForNextPartInstance(context, cache).await?;
 
@@ -103,7 +103,7 @@ pub async fn setNextPart(
 
                             Some(res)
                         })
-                        .map_err(|_| format!("Failed to reuse part instance"))?;
+                        .map_err(|_| "Failed to reuse part instance".to_string())?;
 
                     syncPlayheadInfinitesForNextPartInstance(context, cache).await?;
 
@@ -113,10 +113,10 @@ pub async fn setNextPart(
                     let part = cache
                         .parts
                         .find_one_by_id(&selected_part.part_id)
-                        .ok_or_else(|| format!("Failed to find part to set as next"))?;
+                        .ok_or_else(|| "Failed to find part to set as next".to_string())?;
 
                     if part.invalid {
-                        return Err(format!("Part is marked as invalid, cannot set as next."));
+                        return Err("Part is marked as invalid, cannot set as next.".to_string());
                     } else if !rundownIds.contains(&part.rundown_id) {
                         return Err(format!(
                             "Part \"{}\" of rundown \"{}\" not part of RundownPlaylist \"{}\"",
@@ -177,7 +177,7 @@ pub async fn setNextPart(
 
                             previous_part_end_state: None,
                         })
-                        .map_err(|_| format!("Failed to create part instance"))?;
+                        .map_err(|_| "Failed to create part instance".to_string())?;
 
                     let rundown =
                         cache
@@ -203,7 +203,7 @@ pub async fn setNextPart(
                         cache
                             .piece_instances
                             .insert(piece_instance)
-                            .map_err(|_| format!("Failed to insert piece instance"))?;
+                            .map_err(|_| "Failed to insert piece instance".to_string())?;
                     }
 
                     id
@@ -244,7 +244,7 @@ pub async fn setNextPart(
 
                 Some(res)
             })
-            .map_err(|_| format!("failed to set next part instance"))?;
+            .map_err(|_| "failed to set next part instance".to_string())?;
     } else {
         // Set to null
 
@@ -259,7 +259,7 @@ pub async fn setNextPart(
 
                 Some(res)
             })
-            .map_err(|_| format!("failed to clear next part instance"))?;
+            .map_err(|_| "failed to clear next part instance".to_string())?;
     }
 
     {
@@ -271,14 +271,14 @@ pub async fn setNextPart(
                     && Some(&p.id) != cache.playlist.doc().next_part_instance_id.as_ref()
                     && Some(&p.id) != cache.playlist.doc().current_part_instance_id.as_ref()
             })
-            .map_err(|_| format!("failed to find part instances to cleanup"))?;
+            .map_err(|_| "failed to find part instances to cleanup".to_string())?;
         let instances_ids_to_remove_set =
             instances_ids_to_remove.into_iter().collect::<HashSet<_>>();
 
         cache
             .piece_instances
             .remove_by_filter(|p| instances_ids_to_remove_set.contains(&p.part_instance_id))
-            .map_err(|_| format!("failed to cleanup piece instances"))?;
+            .map_err(|_| "failed to cleanup piece instances".to_string())?;
     }
 
     {
@@ -328,7 +328,7 @@ pub async fn setNextPart(
                 }
             }
 
-            if resetPartInstanceIds.len() > 0 {
+            if !resetPartInstanceIds.is_empty() {
                 resetPartInstancesWithPieceInstances(context, cache, "AA".to_string());
                 // TODO
                 // {

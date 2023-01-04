@@ -91,7 +91,7 @@ pub fn rewrapPieceToInstance(
     playlist_activation_id: RundownPlaylistActivationId,
     rundown_id: RundownId,
     part_instance_id: PartInstanceId,
-    is_temporary: bool,
+    _is_temporary: bool,
 ) -> PieceInstance {
     PieceInstance {
         id: PieceInstanceId::new_from(format!(
@@ -100,10 +100,10 @@ pub fn rewrapPieceToInstance(
             piece.id.unprotect()
         )),
 
-        rundown_id: rundown_id.clone(),
+        rundown_id,
         part_instance_id,
 
-        piece: piece,
+        piece,
 
         playlist_activation_id,
         reset: false,

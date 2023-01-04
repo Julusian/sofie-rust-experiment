@@ -120,10 +120,10 @@ pub fn calculatePartTimings(
                 in_transition_start: None, // No transition to use
                 // delay the new part for a bit
                 to_part_delay: take_offset,
-                to_part_postroll: to_part_postroll,
+                to_part_postroll,
                 // The old part needs to continue for a while
                 from_part_remaining: take_offset + from_part_postroll,
-                from_part_postroll: from_part_postroll,
+                from_part_postroll,
             }
         }
         (Some(in_transition), Some(from_part)) => {
@@ -150,11 +150,11 @@ pub fn calculatePartTimings(
                     None
                 },
                 to_part_delay: take_offset + in_transition.part_content_delay_duration,
-                to_part_postroll: to_part_postroll,
+                to_part_postroll,
                 from_part_remaining: take_offset
                     + in_transition.previous_part_keepalive_duration
                     + from_part_postroll,
-                from_part_postroll: from_part_postroll,
+                from_part_postroll,
             }
         }
     }
